@@ -1,0 +1,381 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------
+// PLATFORM CORE & SAAS STRUCTURE
+// ------------------------------------------------------
+
+model Plan {
+  id            String   @id @default(cuid())
+  code          String   @unique // start, pro, max
+  name          String
+  priceMonthly  Float    @default(0)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  tenants       Tenant[]
+}
+
+model NicheType {
+  id          String   @id @default(cuid())
+  code        String   @unique // RESTAURANT, PHYSIOTHERAPY, RETAIL
+  name        String
+  description String?
+  active      Boolean  @default(true)
+  
+  tenants     Tenant[]
+}
+
+model Tenant {
+  id               String   @id @default(cuid())
+  name             String
+  slug             String   @unique
+  document         String?
+  status           String   @default("ACTIVE") // ACTIVE, SUSPENDED, DELETED
+  
+  planId           String
+  plan             Plan     @relation(fields: [planId], references: [id])
+  
+  nicheId          String
+  niche            NicheType @relation(fields: [nicheId], references: [id])
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relationships
+  config           TenantConfig?
+  modules          TenantModule[]
+  users            UserTenantRole[]
+  featureFlags     FeatureFlag[]
+  dashboardConfig  TenantDashboardConfig?
+  auditLogs        AuditLog[]
+
+  // Business Entities (Generic/Scaffold)
+  categories       Category[]
+  products         Product[]
+  notifications    Notification[]
+  
+  // Niche Specific - Restaurant
+  restaurants      Restaurant[] 
+  monthlyTabs      MonthlyTab[]
+  
+  // Niche Specific - Physiotherapy
+  patients         Patient[]
+}
+
+model TenantConfig {
+  id             String  @id @default(cuid())
+  tenantId       String  @unique
+  tenant         Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  logoUrl        String?
+  companyName    String?
+  primaryColor   String? @default("#4f46e5")
+  secondaryColor String? @default("#1e293b")
+  
+  // Customizations
+  terms          String?   // Dictionary overrides: { "patient": "Cliente" }
+  menuOrder      String?   // ["dashboard", "patients", "finance"]
+  
+  updatedAt      DateTime @updatedAt
+}
+
+model TenantModule {
+  id        String  @id @default(cuid())
+  tenantId  String
+  moduleKey String  // inventory, monthly_tabs, clinical_files
+  enabled   Boolean @default(true)
+  
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, moduleKey])
+}
+
+model FeatureFlag {
+  id        String  @id @default(cuid())
+  tenantId  String
+  flagKey   String  // beta_features, new_pdv
+  enabled   Boolean @default(false)
+  
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, flagKey])
+}
+
+// ------------------------------------------------------
+// RBAC SYSTEM (Tenant Aware)
+// ------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  username     String   @unique
+  password     String
+  isPlatformAdmin Boolean @default(false)
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenants      UserTenantRole[]
+  auditLogs    AuditLog[]
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique // ADMIN, MANAGER, WAITER, PHYSIOTHERAPIST, RECEPTIONIST
+  description String?
+  
+  permissions RolePermission[]
+  userTenants UserTenantRole[]
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  resource    String   // orders, products, patients, clinical_history
+  action      String   // create, read, update, delete, manage
+  
+  roles       RolePermission[]
+
+  @@unique([resource, action])
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+model UserTenantRole {
+  id        String @id @default(cuid())
+  userId    String
+  tenantId  String
+  roleId    String
+  
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  role      Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId])
+}
+
+// ------------------------------------------------------
+// DASHBOARD DYNAMIC SYSTEM
+// ------------------------------------------------------
+
+model DashboardWidget {
+  id          String   @id @default(cuid())
+  code        String   @unique // sales_chart, recent_patients, low_stock
+  name        String
+  description String?
+  nicheCode   String?  // If null, it's global
+  component   String   // Component name to render
+  
+  tenantConfigs TenantDashboardConfigWidget[]
+}
+
+model TenantDashboardConfig {
+  id        String   @id @default(cuid())
+  tenantId  String   @unique
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  widgets   TenantDashboardConfigWidget[]
+}
+
+model TenantDashboardConfigWidget {
+  id               String          @id @default(cuid())
+  configId         String
+  widgetId         String
+  order            Int             @default(0)
+  size             String          @default("medium") // small, medium, large, full
+  
+  config           TenantDashboardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  widget           DashboardWidget       @relation(fields: [widgetId], references: [id], onDelete: Cascade)
+
+  @@unique([configId, widgetId])
+}
+
+// ------------------------------------------------------
+// BUSINESS ENTITIES (Tenant Scoped)
+// ------------------------------------------------------
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  action    String   // CREATE, UPDATE, DELETE, LOGIN
+  resource  String   // Order, Product, Patient
+  resourceId String?
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Restaurant {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  location    String?
+  isOpen      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orders      Order[]
+}
+
+model Category {
+  id         String    @id @default(cuid())
+  tenantId   String
+  name       String
+  products   Product[]
+  
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model Product {
+  id          String     @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  imageUrl    String?
+  price       Float
+  active      Boolean    @default(true)
+  categoryId  String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  category    Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id           String      @id @default(cuid())
+  tenantId     String      // Added explicit tenantId for faster scoping
+  restaurantId String
+  userId       String?
+  table        String?
+  customerName String?
+  status       String      @default("OPEN")
+  total        Float       @default(0)
+  paymentMethod String?
+  cpf          String?
+  notalegal    Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  monthlyTabId String?
+  monthlyTab   MonthlyTab? @relation(fields: [monthlyTabId], references: [id], onDelete: SetNull)
+
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  items        OrderItem[]
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int     @default(1)
+  price     Float
+  notes     String?
+
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  tenantId  String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model MonthlyTab {
+  id           String   @id @default(cuid())
+  tenantId     String
+  customerName String
+  phoneNumber  String?
+  status       String   @default("OPEN") // OPEN, CLOSED
+  balance      Float    @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orders       Order[]
+}
+
+// ------------------------------------------------------
+// PHYSIOTHERAPY SPECIFIC MODELS
+// ------------------------------------------------------
+
+model Patient {
+  id               String   @id @default(cuid())
+  tenantId         String
+  name             String
+  email            String?
+  phone            String?
+  birthDate        DateTime?
+  document         String?
+  address          String?
+  gender           String?
+  status           String   @default("ACTIVE") // ACTIVE, DISCHARGED, INACTIVE
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clinicalFiles    ClinicalFile[]
+  evolutions       ClinicalEvolution[]
+}
+
+model ClinicalFile {
+  id               String   @id @default(cuid())
+  patientId        String
+  tenantId         String
+  
+  complaint        String?  // Queixa principal
+  history          String?  // Histórico patológico pregressa
+  anamnesis        String?    // Structured data
+  diagnosis        String?  
+  treatmentPlan    String?  
+  
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  patient          Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+model ClinicalEvolution {
+  id               String   @id @default(cuid())
+  patientId        String
+  tenantId         String
+  professionalId   String?  // User ID
+  
+  notes            String   
+  evolutionDate    DateTime @default(now())
+  status           String?  // IMPROVED, STABLE, REGRESSED
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  patient          Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+}

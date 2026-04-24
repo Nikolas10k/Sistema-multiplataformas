@@ -1,0 +1,598 @@
+/* ============================================
+   PDV — Frente de Caixa — White Sophisticated
+   ============================================ */
+
+/* Layout principal */
+.pdv-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg-page);
+  overflow: hidden;
+  font-family: var(--font);
+}
+
+.pdv-body {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  flex: 1;
+  overflow: hidden;
+  gap: 0;
+}
+
+/* ============================================
+   PAINEL ESQUERDO — Carrinho
+   ============================================ */
+.pdv-cart {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.pdv-cart-header {
+  padding: 1.125rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+  flex-shrink: 0;
+}
+
+.pdv-cart-title {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.pdv-cart-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-placeholder);
+  margin-top: 0.125rem;
+}
+
+/* Tabela do Carrinho */
+.pdv-cart-table-wrap {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.pdv-cart-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.pdv-cart-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-subtle);
+  padding: 0.625rem 0.875rem;
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.pdv-cart-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background var(--ease-fast);
+}
+.pdv-cart-table tbody tr:hover { background: var(--bg-subtle); }
+.pdv-cart-table tbody tr:last-child { border-bottom: none; }
+
+.pdv-cart-table td {
+  padding: 0.625rem 0.875rem;
+  vertical-align: middle;
+  color: var(--text-secondary);
+}
+
+/* Controles de quantidade no carrinho */
+.qty-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.qty-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all var(--ease-fast);
+  flex-shrink: 0;
+}
+.qty-btn:hover {
+  background: var(--accent-light);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+.qty-btn.danger:hover {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger);
+}
+
+.qty-value {
+  font-weight: 700;
+  font-size: 0.875rem;
+  min-width: 20px;
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.remove-btn {
+  opacity: 0;
+  transition: opacity var(--ease-fast);
+  cursor: pointer;
+  color: var(--text-placeholder);
+}
+.pdv-cart-table tbody tr:hover .remove-btn { opacity: 1; }
+.remove-btn:hover { color: var(--danger); }
+
+/* Empty cart */
+.pdv-cart-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3rem 2rem;
+  color: var(--text-placeholder);
+  text-align: center;
+}
+
+.pdv-cart-empty svg { opacity: 0.25; }
+
+/* Resumo financeiro */
+.pdv-cart-summary {
+  border-top: 1px solid var(--border);
+  padding: 1rem 1.5rem;
+  background: var(--bg-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.pdv-summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.pdv-summary-row.discount {
+  color: var(--success);
+}
+.pdv-summary-row.surcharge {
+  color: var(--warning);
+}
+
+.pdv-summary-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.25rem 0;
+}
+
+.pdv-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.625rem 0;
+}
+
+.pdv-total-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.pdv-total-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: -0.03em;
+}
+
+/* ============================================
+   PAINEL DIREITO — Catálogo
+   ============================================ */
+.pdv-catalog {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-page);
+}
+
+/* Topbar do PDV */
+.pdv-topbar {
+  height: 64px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.pdv-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.pdv-brand-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Barra de busca */
+.pdv-search-section {
+  padding: 1rem 1.5rem;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.pdv-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-subtle);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  transition: border-color var(--ease-fast), box-shadow var(--ease-fast);
+}
+
+.pdv-search-bar:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  background: var(--bg-surface);
+}
+
+.pdv-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+  outline: none;
+  font-family: var(--font);
+}
+.pdv-search-input::placeholder { color: var(--text-placeholder); }
+
+/* Métricas do produto selecionado */
+.pdv-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.625rem;
+  margin-top: 0.875rem;
+}
+
+.pdv-metric-box {
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.625rem 0.875rem;
+}
+
+.pdv-metric-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.pdv-metric-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.pdv-metric-value.accent { color: var(--accent); }
+
+/* Categorias e Grid de Produtos */
+.pdv-catalog-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.pdv-categories {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.pdv-cat-pill {
+  padding: 0.375rem 0.875rem;
+  border-radius: 99px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--ease-fast);
+}
+.pdv-cat-pill:hover {
+  border-color: var(--accent-border);
+  color: var(--accent);
+  background: var(--accent-light);
+}
+.pdv-cat-pill.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+  box-shadow: var(--shadow-accent);
+}
+
+.pdv-product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+.pdv-product-card {
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all var(--ease-fast);
+  text-align: center;
+  user-select: none;
+}
+.pdv-product-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  transform: translateY(-2px);
+}
+.pdv-product-card:active {
+  transform: scale(0.97);
+}
+
+.pdv-product-emoji {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  background: var(--bg-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  overflow: hidden;
+}
+
+.pdv-product-name {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1.3;
+}
+
+.pdv-product-price {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* ============================================
+   RODAPÉ — Botões de Ação
+   ============================================ */
+.pdv-footer {
+  height: 64px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.pdv-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0 1rem;
+  height: 40px;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition: all var(--ease-fast);
+  white-space: nowrap;
+  flex: 1;
+  font-family: var(--font);
+}
+
+.pdv-action-btn.primary {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+.pdv-action-btn.primary:hover {
+  background: var(--accent);
+  color: white;
+  box-shadow: var(--shadow-accent);
+}
+
+.pdv-action-btn.success {
+  background: var(--success-bg);
+  color: var(--success);
+  border-color: var(--success-border);
+}
+.pdv-action-btn.success:hover {
+  background: var(--success);
+  color: white;
+}
+
+.pdv-action-btn.warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border-color: var(--warning-border);
+}
+.pdv-action-btn.warning:hover {
+  background: var(--warning);
+  color: white;
+}
+
+.pdv-action-btn.danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: var(--danger-border);
+}
+.pdv-action-btn.danger:hover {
+  background: var(--danger);
+  color: white;
+}
+
+.pdv-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.pdv-key-hint {
+  font-size: 0.65rem;
+  font-weight: 500;
+  opacity: 0.7;
+  font-family: monospace;
+}
+
+/* ============================================
+   MODAL (Pagamento e Desconto)
+   ============================================ */
+.pdv-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  animation: fadeIn 0.18s ease forwards;
+}
+
+.pdv-modal {
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+  width: 100%;
+  max-width: 440px;
+  box-shadow: var(--shadow-xl);
+  animation: fadeInUp 0.25s var(--ease-slow) both;
+  overflow: hidden;
+}
+
+.pdv-modal-header {
+  padding: 1.5rem 1.5rem 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pdv-modal-title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.pdv-modal-body {
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.125rem;
+}
+
+.pdv-modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 0.75rem;
+}
+
+.pdv-modal-footer .btn { flex: 1; }
+
+/* Toggle de tipo de desconto */
+.pdv-toggle-group {
+  display: flex;
+  background: var(--bg-muted);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  gap: 3px;
+}
+
+.pdv-toggle-btn {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: transparent;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--ease-fast);
+  font-family: var(--font);
+}
+
+.pdv-toggle-btn.active {
+  background: var(--bg-surface);
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Discount badge no total */
+.pdv-discount-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.4rem;
+  background: var(--success-bg);
+  color: var(--success);
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pdv-discount-badge:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+}

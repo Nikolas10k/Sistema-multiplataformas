@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # Base de dados PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: givance-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-restaurante}
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-restaurante}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Aplicação Next.js
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: givance-app
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-restaurante}?schema=public"
+      NEXTAUTH_SECRET: "f6e7d8c9b0a1f2e3d4c5b6a7980818283"
+      NEXTAUTH_URL: "https://givanceresto.com.br"
+      NEXT_PUBLIC_APP_URL: "https://givanceresto.com.br"
+      NEXT_PUBLIC_API_URL: "https://givanceresto.com.br/api"
+    volumes:
+      - uploads_data:/app/public/uploads
+    ports:
+      - "3000:3000"
+
+  # Proxy Reverso Nginx com SSL (Certbot)
+  proxy:
+    image: nginx:alpine
+    container_name: givance-proxy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+    depends_on:
+      - app
+
+volumes:
+  postgres_data:
+  uploads_data:
