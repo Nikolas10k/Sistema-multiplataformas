@@ -35,26 +35,26 @@ export default function AdminDashboard() {
   const getWidgets = () => {
     if (niche === 'PHYSIOTHERAPY') {
       return [
-        { title: "Sessões Hoje", value: "12", icon: "evolution", color: "accent", trend: "15%" },
-        { title: "Novos Pacientes", value: "4", icon: "patients", color: "success", trend: "10%" },
-        { title: "Faturamento Mensal", value: "R$ 14.200", icon: "revenue", color: "info", trend: "22%" },
-        { title: "Evoluções Pendentes", value: "3", icon: "evolution", color: "warning" },
+        { title: "Sessões Hoje", value: "0", icon: "evolution", color: "accent", trend: "0%" },
+        { title: "Novos Pacientes", value: "0", icon: "patients", color: "success", trend: "0%" },
+        { title: "Faturamento Mensal", value: "R$ 0,00", icon: "revenue", color: "info", trend: "0%" },
+        { title: "Evoluções Pendentes", value: "0", icon: "evolution", color: "warning" },
       ];
     }
     if (niche === 'RETAIL') {
       return [
-        { title: "Vendas Hoje", value: "R$ 3.840", icon: "revenue", color: "success", trend: "12%" },
-        { title: "Pedidos Realizados", value: "24", icon: "sales", color: "accent" },
-        { title: "Estoque Crítico", value: "5 itens", icon: "inventory", color: "danger" },
-        { title: "Ticket Médio", value: "R$ 160,00", icon: "revenue", color: "info" },
+        { title: "Vendas Hoje", value: "R$ 0,00", icon: "revenue", color: "success", trend: "0%" },
+        { title: "Pedidos Realizados", value: "0", icon: "sales", color: "accent" },
+        { title: "Estoque Crítico", value: "0 itens", icon: "inventory", color: "danger" },
+        { title: "Ticket Médio", value: "R$ 0,00", icon: "revenue", color: "info" },
       ];
     }
     if (niche === 'RESTAURANT') {
       return [
-        { title: "Vendas (Mês)", value: "R$ 8.450", icon: "revenue", color: "success", trend: "8%" },
-        { title: "Mesas Ativas", value: "6", icon: "sales", color: "accent" },
-        { title: "A Receber (Mensal)", value: "R$ 1.200", icon: "revenue", color: "warning" },
-        { title: "Itens Vendidos", value: "142", icon: "inventory", color: "info" },
+        { title: "Vendas (Mês)", value: "R$ 0,00", icon: "revenue", color: "success", trend: "0%" },
+        { title: "Mesas Ativas", value: "0", icon: "sales", color: "accent" },
+        { title: "A Receber (Mensal)", value: "R$ 0,00", icon: "revenue", color: "warning" },
+        { title: "Itens Vendidos", value: "0", icon: "inventory", color: "info" },
       ];
     }
     return [
