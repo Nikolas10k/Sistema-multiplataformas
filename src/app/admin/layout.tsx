@@ -164,12 +164,19 @@ export default function AdminLayout({
       nicheOnly: 'VETERINARY'
     },
     { name: "Painel Geral", icon: LayoutDashboard, path: "/admin" },
-    { name: "Pacientes", icon: Users, path: "/admin/pacientes" },
-    { name: "Vendas e Cobranças", icon: Receipt, path: "/admin/vendas" },
+    { name: "Pacientes", icon: Users, path: "/admin/pacientes", nicheOnly: 'PHYSIOTHERAPY' },
+    { name: "Vendas e Cobranças", icon: Receipt, path: "/admin/vendas", nicheOnly: 'PHYSIOTHERAPY' },
     { name: "Sessão", icon: Activity, path: "/admin/agenda", nicheOnly: 'PHYSIOTHERAPY' },
     { name: "Prontuário Eletrônico", icon: FileText, path: "/admin/fisioterapia/prontuario", nicheOnly: 'PHYSIOTHERAPY' },
     { name: "Serviço/Pacotes", icon: ClipboardList, path: "/admin/vendas/servicos", nicheOnly: 'PHYSIOTHERAPY' },
     { name: "Materiais Médicos", icon: ShoppingBag, path: "/admin/produtos", nicheOnly: 'PHYSIOTHERAPY' },
+    
+    // Itens de Restaurante / Varejo
+    { name: "PDV / Vendas", icon: Receipt, path: "/pdv", nicheOnly: 'RESTAURANT' },
+    { name: "Cardápio", icon: ClipboardList, path: "/admin/produtos", nicheOnly: 'RESTAURANT' },
+    { name: "Estoque", icon: ShoppingBag, path: "/admin/produtos", nicheOnly: 'RETAIL' },
+    { name: "Vendas", icon: Receipt, path: "/admin/vendas", nicheOnly: 'RETAIL' },
+
     { name: "Equipe", icon: Users, path: "/admin/equipe", feature: "employees.manage" },
     { name: "Relatórios", icon: BarChart3, path: "/admin/relatorios", feature: "reports.advanced" },
     { name: "Configurações", icon: Settings, path: "/admin/configuracoes", feature: "settings.manage" },
@@ -268,7 +275,7 @@ export default function AdminLayout({
               {isSidebarOpen ? <ChevronLeft size={18} /> : <Menu size={18} />}
             </button>
             <span className="page-title">
-              {niche === 'PHYSIOTHERAPY' ? 'Gestão Clínica' : (niche === 'VETERINARY' ? 'Gestão Veterinária' : 'Painel Gerencial')}
+              {niche === 'PHYSIOTHERAPY' ? 'Gestão Clínica v2' : (niche === 'VETERINARY' ? 'Gestão Veterinária v2' : 'Painel Gerencial v2')}
             </span>
           </div>
 
