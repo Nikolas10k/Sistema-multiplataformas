@@ -7,6 +7,7 @@ async function main() {
     { code: 'RESTAURANT', name: 'Restaurante e Gastronomia' },
     { code: 'PHYSIOTHERAPY', name: 'Fisioterapia e Reabilitação' },
     { code: 'RETAIL', name: 'Varejo e Comércio' },
+    { code: 'VETERINARY', name: 'Veterinária e Petshop' },
     { code: 'GENERAL', name: 'Geral / Outros' },
   ];
 
@@ -34,7 +35,7 @@ async function main() {
   }
 
   // 3. Roles
-  const roles = ['ADMIN', 'MANAGER', 'WAITER', 'PHYSIOTHERAPIST', 'RECEPTIONIST'];
+  const roles = ['ADMIN', 'MANAGER', 'WAITER', 'PHYSIOTHERAPIST', 'RECEPTIONIST', 'VETERINARIAN'];
   const roleEntities = {};
   for (const r of roles) {
     roleEntities[r] = await prisma.role.upsert({
@@ -263,6 +264,63 @@ async function main() {
   });
 
   console.log('Restaurante Start: Priscila / 123 (Tenant: priscilalanches)');
+
+  // 9. Tenant de Exemplo - VETERINARIA
+  const vetNiche = await prisma.nicheType.findUnique({ where: { code: 'VETERINARY' } });
+  
+  const tenantVet = await prisma.tenant.upsert({
+    where: { slug: 'vet-care' },
+    update: {},
+    create: {
+      name: 'VetCare Clínica Veterinária',
+      slug: 'vet-care',
+      nicheId: vetNiche.id,
+      planId: maxPlan.id,
+      config: {
+        create: {
+          companyName: 'VetCare',
+          primaryColor: '#8b5cf6', // Violeta
+        }
+      },
+      modules: {
+        create: [
+          { moduleKey: 'tutores.manage' },
+          { moduleKey: 'animals.manage' },
+          { moduleKey: 'calendar.enabled' },
+          { moduleKey: 'vet_clinical_files' },
+          { moduleKey: 'vaccines.enabled' },
+          { moduleKey: 'exams.enabled' },
+          { moduleKey: 'internment.enabled' },
+          { moduleKey: 'products.manage' },
+          { moduleKey: 'inventory.basic' },
+          { moduleKey: 'reports.advanced' },
+          { moduleKey: 'employees.manage' }
+        ]
+      }
+    }
+  });
+
+  const userVet = await prisma.user.upsert({
+    where: { username: 'vet' },
+    update: { password: 'vet123' },
+    create: {
+      name: 'Dra. Luana Sampaio',
+      username: 'vet',
+      password: 'vet123',
+    }
+  });
+
+  await prisma.userTenantRole.upsert({
+    where: { userId_tenantId: { userId: userVet.id, tenantId: tenantVet.id } },
+    update: { roleId: roleEntities['ADMIN'].id },
+    create: {
+      userId: userVet.id,
+      tenantId: tenantVet.id,
+      roleId: roleEntities['ADMIN'].id
+    }
+  });
+
+  console.log('Veterinária: vet / vet123 (Tenant: vet-care)');
 }
 
 main()

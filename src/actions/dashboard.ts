@@ -21,6 +21,9 @@ export async function getDashboardData(period: 'daily' | 'monthly' | 'semi-annua
     else if (period === 'semi-annual') startDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
     else if (period === 'annual') startDate = new Date(now.getFullYear(), 0, 1);
 
+    const tenantConfig = await prisma.tenantConfig.findUnique({ where: { tenantId } });
+    const monthlyGoal = tenantConfig?.monthlyGoal || 0;
+
     const restaurants = await prisma.restaurant.findMany({ where: { tenantId } });
     const restaurantIds = restaurants.map(r => r.id);
 
@@ -111,7 +114,7 @@ export async function getDashboardData(period: 'daily' | 'monthly' | 'semi-annua
 
     return {
       stats: { revenue: totalRevenue, orders: orderCount, avgTicket: avgTicket, customers: orderCount * 2 },
-      recentOrders, topProducts, pendingClosures: [], liveKitchen, employeeStats, revenueByHour: chartData, notifications
+      recentOrders, topProducts, pendingClosures: [], liveKitchen, employeeStats, revenueByHour: chartData, notifications, monthlyGoal
     };
   } catch (error) {
     console.error("Dashboard Error:", error);
@@ -120,4 +123,18 @@ export async function getDashboardData(period: 'daily' | 'monthly' | 'semi-annua
       recentOrders: [], topProducts: [], pendingClosures: [], liveKitchen: [], employeeStats: [], revenueByHour: [], notifications: []
     };
   }
+}
+
+export async function updateMonthlyGoal(goal: number) {
+  const cookieStore = await cookies();
+  const tenantId = cookieStore.get("tenant_id")?.value;
+  if (!tenantId) throw new Error("Tenant não identificado");
+
+  await prisma.tenantConfig.upsert({
+    where: { tenantId },
+    update: { monthlyGoal: goal },
+    create: { tenantId, monthlyGoal: goal, companyName: "Config" }
+  });
+
+  return { success: true };
 }

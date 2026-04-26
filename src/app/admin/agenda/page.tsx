@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { getMyTenantContext } from "@/actions/features";
 import { getTerm } from "@/lib/dictionary";
+import { getPatients } from "@/actions/clinical";
 import Link from "next/link";
 
 export default function AgendaPage() {
@@ -22,45 +23,30 @@ export default function AgendaPage() {
   const [selectedDate, setSelectedDate] = useState(23);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<any>(null);
-  const [sessions, setSessions] = useState<Record<number, any[]>>({
-    21: [
-      { id: 101, time: "09:00", patient: "Maria Silva", service: "Avaliação", status: "CONFIRMED" },
-      { id: 102, time: "14:00", patient: "José Santos", service: "Sessão 05/10", status: "CONFIRMED" },
-    ],
-    22: [
-      { id: 201, time: "10:00", patient: "Bruna Lima", service: "Drenagem", status: "CONFIRMED" },
-      { id: 202, time: "11:00", patient: "Fernando Souza", service: "Sessão 02/10", status: "WAITING" },
-      { id: 203, time: "16:00", patient: "Clara Mendes", service: "Revisão", status: "PENDING" },
-    ],
-    23: [
-      { id: 301, time: "08:00", patient: "João Silva", service: "Fisioterapia Traumato", status: "CONFIRMED" },
-      { id: 302, time: "09:00", patient: "Maria Oliveira", service: "Pilates Clínico", status: "WAITING" },
-      { id: 303, time: "10:30", patient: "Carlos Pereira", service: "RPG", status: "CONFIRMED" },
-      { id: 304, time: "14:00", patient: "Ana Costa", service: "Fisioterapia Traumato", status: "PENDING" },
-      { id: 305, time: "16:30", patient: "Ricardo Nunes", service: "Sessão 08/12", status: "CONFIRMED" },
-    ],
-    24: [
-      { id: 401, time: "08:30", patient: "Daniel Rocha", service: "Avaliação Postural", status: "CONFIRMED" },
-      { id: 402, time: "15:00", patient: "Sonia Guedes", service: "Sessão 04/10", status: "PENDING" },
-    ]
-  });
+  const [sessions, setSessions] = useState<Record<number, any[]>>({});
+  const [patients, setPatients] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [formData, setFormData] = useState({
-    patient: "João Silva",
+    patient: "",
     time: "08:00",
     date: "2026-04-23"
   });
   
   useEffect(() => {
-    getMyTenantContext().then(ctx => {
+    Promise.all([
+      getMyTenantContext(),
+      getPatients()
+    ]).then(([ctx, pList]) => {
       setContext(ctx);
+      setPatients(pList);
       setLoading(false);
     });
   }, []);
 
   const openNew = () => {
     setEditingSession(null);
-    setFormData({ patient: "João Silva", time: "08:00", date: "2026-04-23" });
+    setFormData({ patient: patients[0]?.name || "", time: "08:00", date: "2026-04-23" });
     setIsModalOpen(true);
   };
 
@@ -101,7 +87,12 @@ export default function AgendaPage() {
 
   const niche = context?.niche || 'GENERAL';
   const labelSessao = getTerm("appointment", niche);
-  const currentSessions = sessions[selectedDate] || [];
+  const labelPaciente = getTerm("customer", niche);
+  const labelAnimal = getTerm("patient", niche);
+  
+  const currentSessions = (sessions[selectedDate] || []).filter(s => 
+    s.patient.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (loading) return <div className="p-8">Carregando Agenda...</div>;
 
@@ -120,15 +111,25 @@ export default function AgendaPage() {
 
             <div className="p-6 space-y-4">
               <div className="input-group">
-                <label className="input-label">Paciente</label>
+                <label className="input-label">{labelPaciente}</label>
                 <select className="input-field" value={formData.patient} onChange={e => setFormData({...formData, patient: e.target.value})}>
-                  <option>João Silva</option>
-                  <option>Maria Oliveira</option>
-                  <option>Carlos Pereira</option>
-                  <option>Bruna Lima</option>
-                  <option>Fernando Souza</option>
+                  {patients.length > 0 ? (
+                    patients.map(p => <option key={p.id} value={p.name}>{p.name}</option>)
+                  ) : (
+                    <option value="">Nenhum cadastrado</option>
+                  )}
                 </select>
               </div>
+              {niche === 'VETERINARY' && (
+                <div className="input-group">
+                  <label className="input-label">{labelAnimal}</label>
+                  <select className="input-field">
+                    <option>Rex (Cão)</option>
+                    <option>Mel (Gato)</option>
+                    <option>Thor (Cão)</option>
+                  </select>
+                </div>
+              )}
               <div className="grid-2">
                 <div className="input-group">
                   <label className="input-label">Data</label>
@@ -239,14 +240,22 @@ export default function AgendaPage() {
                 <p className="text-xs text-muted">Cronograma de atendimentos clínicos</p>
               </div>
               <div className="flex gap-2">
-                <button className="btn btn-secondary btn-sm"><Filter size={14} /> Filtros</button>
+                <div className="input-wrapper" style={{ minWidth: '200px' }}>
+                  <input 
+                    type="text" 
+                    className="input-field input-sm" 
+                    placeholder="Filtrar por nome..." 
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
 
             <div className="p-0">
               {currentSessions.length > 0 ? (
                 <div className="divide-y">
-                  {currentSessions.map((s) => (
+                  {currentSessions.map((s, idx) => (
                     <div key={s.id} className="p-6 flex gap-6 hover:bg-bg-muted/10 transition-colors group">
                       <div className="flex flex-col items-center min-w-[60px] pt-1">
                         <span className="text-xl font-bold tracking-tighter">{s.time}</span>
@@ -259,7 +268,7 @@ export default function AgendaPage() {
                               <User size={24} />
                             </div>
                             <div>
-                              <h4 className="text-lg font-bold">{s.patient}</h4>
+                              <h4 className="text-lg font-bold">{niche === 'VETERINARY' ? (idx % 2 === 0 ? `Rex (Tutor: ${s.patient})` : `Mel (Tutor: ${s.patient})`) : s.patient}</h4>
                               <p className="text-xs text-muted uppercase font-bold tracking-widest">{s.service}</p>
                             </div>
                           </div>
@@ -274,7 +283,7 @@ export default function AgendaPage() {
                           </div>
                         </div>
                         <div className="flex gap-3 mt-4 pt-4 border-top">
-                          <Link href={`/admin/fisioterapia/prontuario/${s.id}`} className="btn btn-secondary btn-sm flex-1">Prontuário</Link>
+                          <Link href={niche === 'PHYSIOTHERAPY' ? `/admin/fisioterapia/prontuario/${s.id}` : (niche === 'VETERINARY' ? `/admin/animais/ficha/101` : `/admin/fichas/${s.id}`)} className="btn btn-secondary btn-sm flex-1">Prontuário</Link>
                           <button className="btn btn-secondary btn-sm flex-1" onClick={() => openEdit(s)}>Editar</button>
                           <button className="btn btn-danger btn-sm px-4" onClick={() => handleDelete(s.id)}>Remover</button>
                         </div>

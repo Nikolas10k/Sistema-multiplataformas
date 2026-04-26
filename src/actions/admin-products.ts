@@ -24,12 +24,24 @@ export async function createProduct(data: any) {
         name: data.name,
         description: data.description,
         price: data.price,
+        cost: data.cost,
+        stock: data.stock,
         imageUrl: data.imageUrl,
         categoryId: category.id,
         tenantId,
         active: data.active !== undefined ? data.active : true
       }
     });
+
+    // Notificação de estoque baixo (<= 5)
+    if (data.stock <= 5) {
+      await prisma.notification.create({
+        data: {
+          tenantId,
+          message: `Estoque Baixo: ${data.name} está com apenas ${data.stock} unidade(s).`
+        }
+      });
+    }
     return { success: true };
   } catch (error) {
     console.error(error);
@@ -59,11 +71,23 @@ export async function updateProduct(id: string, data: any) {
         name: data.name,
         description: data.description,
         price: data.price,
+        cost: data.cost,
+        stock: data.stock,
         imageUrl: data.imageUrl,
         categoryId: category.id,
         active: data.active
       }
     });
+
+    // Notificação de estoque baixo
+    if (data.stock <= 5) {
+      await prisma.notification.create({
+        data: {
+          tenantId,
+          message: `Estoque Baixo: ${data.name} está com apenas ${data.stock} unidade(s).`
+        }
+      });
+    }
     return { success: true };
   } catch (error) {
     console.error(error);

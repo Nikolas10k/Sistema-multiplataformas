@@ -23,6 +23,8 @@ import { createTenant, toggleTenantStatus, deleteTenant } from "@/actions/platfo
 export default function PlatformDashboard({ stats }: any) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [filterName, setFilterName] = useState("");
+  const [filterPlan, setFilterPlan] = useState("");
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -31,7 +33,11 @@ export default function PlatformDashboard({ stats }: any) {
     planId: stats.planStats?.[0]?.id || "",
     adminName: "",
     adminUser: "",
-    adminPass: ""
+    adminPass: "",
+    document: "",
+    phone: "",
+    email: "",
+    address: ""
   });
 
   const openEdit = (tenant: any) => {
@@ -43,7 +49,11 @@ export default function PlatformDashboard({ stats }: any) {
       planId: tenant.planId,
       adminName: tenant.users[0]?.user?.name || "",
       adminUser: tenant.users[0]?.user?.username || "",
-      adminPass: "" // Não carregar senha por segurança
+      adminPass: "", // Não carregar senha por segurança
+      document: tenant.document || "",
+      phone: tenant.phone || "",
+      email: tenant.email || "",
+      address: tenant.address || ""
     });
     setIsModalOpen(true);
   };
@@ -53,7 +63,7 @@ export default function PlatformDashboard({ stats }: any) {
     setEditingId(null);
     setFormData({
       name: "", slug: "", nicheId: stats.niches?.[0]?.id || "", planId: stats.planStats?.[0]?.id || "",
-      adminName: "", adminUser: "", adminPass: ""
+      adminName: "", adminUser: "", adminPass: "", document: "", phone: "", email: "", address: ""
     });
   };
 
@@ -84,6 +94,13 @@ export default function PlatformDashboard({ stats }: any) {
     if (code === 'RETAIL') return <ShoppingBag size={16} />;
     return <Globe size={16} />;
   };
+
+  const filteredTenants = stats.tenants.filter((t: any) => {
+    const matchName = t.name.toLowerCase().includes(filterName.toLowerCase()) || 
+                      (t.document && t.document.includes(filterName));
+    const matchPlan = filterPlan ? t.planId === filterPlan : true;
+    return matchName && matchPlan;
+  });
 
   return (
     <div className="animate-fade-in">
@@ -157,7 +174,14 @@ export default function PlatformDashboard({ stats }: any) {
           <div className="flex gap-2">
             <div className="input-wrapper">
               <Settings2 size={14} className="input-icon" />
-              <input type="text" className="input-field input-sm with-icon" placeholder="Filtrar clientes..." />
+              <select className="input-field input-sm with-icon bg-transparent border-none" value={filterPlan} onChange={e => setFilterPlan(e.target.value)}>
+                <option value="">Todos os Planos</option>
+                {stats.planStats.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <div className="input-wrapper">
+              <Settings2 size={14} className="input-icon" />
+              <input type="text" className="input-field input-sm with-icon" placeholder="Filtrar clientes..." value={filterName} onChange={e => setFilterName(e.target.value)} />
             </div>
           </div>
         </div>
@@ -173,7 +197,7 @@ export default function PlatformDashboard({ stats }: any) {
               </tr>
             </thead>
             <tbody>
-              {stats.tenants.map((t: any) => (
+              {filteredTenants.map((t: any) => (
                 <tr key={t.id} className="hover:bg-bg-muted/30 transition-colors">
                   <td>
                     <div className="flex items-center gap-3">
@@ -192,7 +216,9 @@ export default function PlatformDashboard({ stats }: any) {
                   <td>
                     <div className="text-sm">
                       <p className="font-medium">{t.users[0]?.user?.name || "N/A"}</p>
-                      <p className="text-xs text-muted">@{t.users[0]?.user?.username}</p>
+                      <p className="text-xs text-muted mb-1">@{t.users[0]?.user?.username}</p>
+                      {t.phone && <p className="text-[10px] text-muted">Tel: {t.phone}</p>}
+                      {t.document && <p className="text-[10px] text-muted">Doc: {t.document}</p>}
                     </div>
                   </td>
                   <td>
@@ -299,6 +325,26 @@ export default function PlatformDashboard({ stats }: any) {
                       <select className="input-field" value={formData.planId} onChange={e => setFormData({...formData, planId: e.target.value})}>
                         {stats.planStats.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
                       </select>
+                    </div>
+                  </div>
+                  <div className="grid-2 mt-6">
+                    <div className="input-group">
+                      <label className="input-label">Documento (CPF/CNPJ)</label>
+                      <input type="text" className="input-field" placeholder="000.000.000-00" value={formData.document} onChange={e => setFormData({...formData, document: e.target.value})} />
+                    </div>
+                    <div className="input-group">
+                      <label className="input-label">Telefone de Contato</label>
+                      <input type="text" className="input-field" placeholder="(11) 90000-0000" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                    </div>
+                  </div>
+                  <div className="grid-2 mt-6">
+                    <div className="input-group">
+                      <label className="input-label">E-mail</label>
+                      <input type="email" className="input-field" placeholder="contato@empresa.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                    </div>
+                    <div className="input-group">
+                      <label className="input-label">Endereço Completo</label>
+                      <input type="text" className="input-field" placeholder="Rua, Número, Bairro, Cidade" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
                     </div>
                   </div>
                 </section>

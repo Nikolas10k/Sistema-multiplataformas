@@ -35,37 +35,43 @@ export default function ReportsPage() {
       title: "Faturamento por Período",
       desc: "Análise completa de receitas, convênios e pagamentos particulares.",
       icon: <DollarSign className="text-success" />,
-      category: "Financeiro"
+      category: "Financeiro",
+      type: "faturamento"
     },
     {
       title: "Volume de Atendimentos",
       desc: "Relatório de sessões realizadas, faltas e reagendamentos.",
       icon: <Calendar className="text-accent" />,
-      category: "Operacional"
+      category: "Operacional",
+      type: "atendimentos"
     },
     {
       title: "Novos Pacientes vs Altas",
       desc: "Acompanhamento do crescimento da base de pacientes.",
       icon: <TrendingUp className="text-blue-500" />,
-      category: "Crescimento"
+      category: "Crescimento",
+      type: "pacientes"
     },
     {
       title: "Evoluções Pendentes",
       desc: "Lista de sessões concluídas que ainda não possuem evolução clínica assinada.",
       icon: <FileText className="text-warning" />,
-      category: "Clínico"
+      category: "Clínico",
+      type: "evolucoes"
     },
     {
       title: "Performance por Procedimento",
       desc: "Quais tratamentos e pacotes são mais rentáveis para a clínica.",
       icon: <PieChart className="text-purple-500" />,
-      category: "Gestão"
+      category: "Gestão",
+      type: "performance"
     },
     {
       title: "Anamnese e Fichas Incompletas",
       desc: "Auditoria de dados obrigatórios nos prontuários dos pacientes.",
       icon: <ClipboardCheck className="text-danger" />,
-      category: "Qualidade"
+      category: "Qualidade",
+      type: "fichas"
     }
   ];
 
@@ -74,13 +80,15 @@ export default function ReportsPage() {
       title: "Resumo de Vendas",
       desc: "Visão geral de faturamento e vendas de produtos/serviços.",
       icon: <BarChart3 />,
-      category: "Geral"
+      category: "Geral",
+      type: "vendas"
     },
     {
       title: "Fluxo de Caixa",
       desc: "Entradas e saídas detalhadas por categoria.",
       icon: <Activity />,
-      category: "Financeiro"
+      category: "Financeiro",
+      type: "caixa"
     }
   ];
 
@@ -123,7 +131,7 @@ export default function ReportsPage() {
                 {report.desc}
               </p>
 
-              <div className="flex-between pt-4 border-top" onClick={() => alert("Gerando relatório: " + report.title + "...")}>
+              <div className="flex-between pt-4 border-top" onClick={() => window.open(`/admin/relatorios/imprimir?tipo=${report.type}`, '_blank')}>
                 <span className="text-xs font-bold text-accent opacity-0 group-hover:opacity-100 transition-all transform translate-x-[-10px] group-hover:translate-x-0">
                   GERAR RELATÓRIO
                 </span>

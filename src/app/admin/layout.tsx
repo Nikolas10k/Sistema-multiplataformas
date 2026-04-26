@@ -21,13 +21,20 @@ import {
   Stethoscope,
   FileText,
   CalendarDays,
-  Activity
+  Activity,
+  PawPrint,
+  Syringe,
+  Hospital,
+  ClipboardList,
+  Scissors,
+  Receipt,
+  X
 } from "lucide-react";
 import "./admin.css";
-import ProfileDropdown from "./ProfileDropdown";
 import { logout } from "@/actions/auth";
 import { getTerm } from "@/lib/dictionary";
-import { getMyTenantContext } from "@/actions/features";
+import { getMyTenantContext, getUnreadNotifications } from "@/actions/features";
+import ProfileDropdown from "./ProfileDropdown";
 
 export default function AdminLayout({
   children,
@@ -36,11 +43,13 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userName, setUserName] = useState("Usuário");
   const [userRole, setUserRole] = useState("USER");
   const [context, setContext] = useState<any>(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
     const cookies = document.cookie.split(";");
@@ -49,12 +58,20 @@ export default function AdminLayout({
     const nameCookie = cookies.find((c) => c.trim().startsWith("user_name="));
     if (nameCookie) setUserName(decodeURIComponent(nameCookie.split("=")[1]));
 
+    if (window.innerWidth >= 1024) {
+      setIsSidebarOpen(true);
+    }
+
     getMyTenantContext().then(setContext);
 
-    // Fechar sidebar em mobile por padrão
-    if (window.innerWidth < 768) {
-      setIsSidebarOpen(false);
-    }
+    const fetchNotifications = async () => {
+      const notifs = await getUnreadNotifications();
+      setNotifications(notifs);
+    };
+    fetchNotifications();
+
+    const interval = setInterval(fetchNotifications, 60000); // Polling cada 60s
+    return () => clearInterval(interval);
   }, []);
 
   // Injeção de variáveis de tema e título
@@ -104,10 +121,58 @@ export default function AdminLayout({
       path: niche === 'PHYSIOTHERAPY' ? "/admin/fisioterapia/prontuario" : "/admin/fichas", 
       feature: "clinical_files" 
     },
+    { 
+      name: 'Tutores', 
+      icon: Users, 
+      path: "/admin/tutores", 
+      feature: "tutores.manage",
+      nicheOnly: 'VETERINARY'
+    },
+    { 
+      name: 'Animais', 
+      icon: PawPrint, 
+      path: "/admin/animais", 
+      feature: "animals.manage",
+      nicheOnly: 'VETERINARY'
+    },
+    { 
+      name: 'Vacinas', 
+      icon: Syringe, 
+      path: "/admin/vacinas", 
+      feature: "vaccines.enabled",
+      nicheOnly: 'VETERINARY'
+    },
+    { 
+      name: 'Internação', 
+      icon: Hospital, 
+      path: "/admin/internacao", 
+      feature: "internment.enabled",
+      nicheOnly: 'VETERINARY'
+    },
+    { 
+      name: 'Receituário', 
+      icon: FileText, 
+      path: "/admin/prescricao", 
+      feature: "vet_clinical_files",
+      nicheOnly: 'VETERINARY'
+    },
+    { 
+      name: 'Estética', 
+      icon: Scissors, 
+      path: "/admin/estetica", 
+      feature: "animals.manage",
+      nicheOnly: 'VETERINARY'
+    },
     { name: getTerm("product", niche) + "s", icon: ShoppingBag, path: "/admin/produtos", feature: "products.manage" },
     { name: getTerm("stock", niche), icon: Boxes, path: "/admin/estoque", feature: "inventory.basic" },
+    { name: "Sessão", icon: Activity, path: "/admin/agenda", nicheOnly: 'PHYSIOTHERAPY' },
+    { name: "Prontuário Eletrônico", icon: FileText, path: "/admin/fisioterapia/prontuario", nicheOnly: 'PHYSIOTHERAPY' },
+    { name: "Serviço/Pacotes", icon: ClipboardList, path: "/admin/vendas/servicos", nicheOnly: 'PHYSIOTHERAPY' },
+    { name: "Materiais Médicos", icon: ShoppingBag, path: "/admin/produtos", nicheOnly: 'PHYSIOTHERAPY' },
+    { name: "Vendas e Cobranças", icon: Receipt, path: "/admin/vendas", nicheOnly: 'PHYSIOTHERAPY' },
     { name: "Equipe", icon: Users, path: "/admin/equipe", feature: "employees.manage" },
     { name: "Relatórios", icon: BarChart3, path: "/admin/relatorios", feature: "reports.advanced" },
+    { name: "Configurações", icon: Settings, path: "/admin/configuracoes", feature: "settings.manage" },
     { name: "Restaurantes", icon: Building2, path: "/admin/restaurantes", feature: "multiunit.enabled", nicheOnly: 'RESTAURANT' },
     { name: "Clientes (SaaS)", icon: Globe, path: "/admin/clientes", feature: "platform.tenants" },
   ];
@@ -130,17 +195,22 @@ export default function AdminLayout({
   return (
     <div className="admin-layout">
       {/* ======================== SIDEBAR ======================== */}
-      <aside className={`sidebar ${isSidebarOpen ? "open" : "closed"}`}>
+      <aside className={`sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-header">
-          <div className="sidebar-logo-icon">
-            {context?.config?.logoUrl ? (
-              <img src={context.config.logoUrl} alt="Logo" width={24} height={24} />
-            ) : (
-              <Layers size={18} color="white" />
-            )}
-          </div>
-          {isSidebarOpen && (
-            <span className="sidebar-brand-name">{companyName}</span>
+          {context?.tenantLogo ? (
+            <div className="flex items-center gap-3">
+              <img src={context.tenantLogo} alt="Logo" style={{ maxHeight: '36px', maxWidth: '100%', objectFit: 'contain' }} />
+              {isSidebarOpen && <span className="sidebar-brand-name">{context?.tenantName}</span>}
+            </div>
+          ) : (
+            <>
+              <div className="sidebar-logo-icon">
+                <Layers size={18} color="white" />
+              </div>
+              {isSidebarOpen && (
+                <span className="sidebar-brand-name">{context?.tenantName || "GivanceSaaS"}</span>
+              )}
+            </>
           )}
         </div>
 
@@ -198,15 +268,44 @@ export default function AdminLayout({
               {isSidebarOpen ? <ChevronLeft size={18} /> : <Menu size={18} />}
             </button>
             <span className="page-title">
-              {niche === 'PHYSIOTHERAPY' ? 'Gestão Clínica' : 'Painel Gerencial'}
+              {niche === 'PHYSIOTHERAPY' ? 'Gestão Clínica' : (niche === 'VETERINARY' ? 'Gestão Veterinária' : 'Painel Gerencial')}
             </span>
           </div>
 
           <div className="topbar-right">
-            <button className="btn-circle notification-btn" title="Notificações">
-              <Bell size={17} />
-              <span className="notification-badge">3</span>
-            </button>
+            <div style={{ position: 'relative' }}>
+              <button 
+                className={`btn-circle notification-btn ${notifications.length > 0 ? 'animate-pulse' : ''}`} 
+                title="Notificações"
+                onClick={() => setShowNotifications(!showNotifications)}
+              >
+                <Bell size={17} />
+                {notifications.length > 0 && (
+                  <span className="notification-badge">{notifications.length}</span>
+                )}
+              </button>
+              
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-64 bg-bg-surface border border-border shadow-xl rounded-lg overflow-hidden" style={{ zIndex: 1000, top: '40px' }}>
+                  <div className="p-3 bg-bg-muted border-bottom text-sm font-bold flex-between">
+                    Notificações
+                    <button onClick={() => setShowNotifications(false)}><X size={14}/></button>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {notifications.length > 0 ? notifications.map((n, i) => (
+                      <div key={i} className="p-3 border-bottom hover:bg-bg-muted/50 cursor-pointer text-sm">
+                        <div className="flex items-start gap-2">
+                          <div className="w-2 h-2 rounded-full bg-accent mt-1.5" />
+                          <p>{n.message}</p>
+                        </div>
+                      </div>
+                    )) : (
+                      <div className="p-4 text-center text-muted text-sm">Nenhuma notificação nova</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <ProfileDropdown
               userInitials={initials}

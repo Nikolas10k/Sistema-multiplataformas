@@ -40,6 +40,11 @@
 
   --info:           #0284c7;
   --info-bg:        #f0f9ff;
+  --info-border:    #bae6fd;
+
+  --purple:         #7c3aed;
+  --purple-bg:      #f5f3ff;
+  --purple-border:  #ddd6fe;
 
   /* Bordas e Sombras */
   --border:         #e2e8f0;
@@ -288,6 +293,11 @@ input, select, textarea { font-family: inherit; }
   font-size: 0.8125rem;
 }
 
+.input-field.input-sm {
+  padding: 0.4375rem 0.75rem;
+  font-size: 0.875rem;
+}
+
 .btn-lg {
   padding: 0.875rem 1.75rem;
   font-size: 1rem;
@@ -395,6 +405,8 @@ input, select, textarea { font-family: inherit; }
 .badge-warning { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning-border); }
 .badge-danger  { background: var(--danger-bg);  color: var(--danger);  border: 1px solid var(--danger-border); }
 .badge-neutral { background: var(--bg-muted); color: var(--text-muted); border: 1px solid var(--border); }
+.badge-info    { background: var(--info-bg);   color: var(--info);    border: 1px solid var(--info-border); }
+.badge-accent  { background: var(--accent-light); color: var(--accent); border: 1px solid var(--accent-border); }
 
 /* ============================================
    DIVIDERS / SEPARATORS

@@ -1,4 +1,4 @@
-type Niche = 'RESTAURANT' | 'PHYSIOTHERAPY' | 'RETAIL' | 'GENERAL';
+type Niche = 'RESTAURANT' | 'PHYSIOTHERAPY' | 'RETAIL' | 'VETERINARY' | 'GENERAL';
 
 const dictionaries: Record<Niche, Record<string, string>> = {
   RESTAURANT: {
@@ -9,6 +9,7 @@ const dictionaries: Record<Niche, Record<string, string>> = {
     'evolution': 'Pedido',
     'product': 'Produto/Prato',
     'stock': 'Estoque de Insumos',
+    'niche_name': 'Restaurante e Gastronomia',
   },
   PHYSIOTHERAPY: {
     'customer': 'Paciente',
@@ -18,6 +19,7 @@ const dictionaries: Record<Niche, Record<string, string>> = {
     'evolution': 'Evolução Clínica',
     'product': 'Serviço/Pacote',
     'stock': 'Materiais Médicos',
+    'niche_name': 'Fisioterapia e Reabilitação',
   },
   RETAIL: {
     'customer': 'Cliente',
@@ -27,6 +29,22 @@ const dictionaries: Record<Niche, Record<string, string>> = {
     'evolution': 'Orçamento',
     'product': 'Mercadoria',
     'stock': 'Estoque de Venda',
+    'niche_name': 'Varejo e Comércio',
+  },
+  VETERINARY: {
+    'customer': 'Tutor',
+    'patients': 'Pacientes',
+    'patient': 'Animal',
+    'appointment': 'Consulta/Petshop',
+    'clinical_file': 'Prontuário Veterinário',
+    'evolution': 'Evolução Clínica',
+    'product': 'Medicamento/Item',
+    'stock': 'Estoque Vet/Pet',
+    'internment': 'Internação',
+    'vaccine': 'Vacina',
+    'exam': 'Exame',
+    'procedure': 'Procedimento',
+    'niche_name': 'Veterinária e Petshop',
   },
   GENERAL: {
     'customer': 'Cliente',
@@ -36,6 +54,7 @@ const dictionaries: Record<Niche, Record<string, string>> = {
     'evolution': 'Acompanhamento',
     'product': 'Item',
     'stock': 'Almoxarifado',
+    'niche_name': 'Geral',
   }
 };
 

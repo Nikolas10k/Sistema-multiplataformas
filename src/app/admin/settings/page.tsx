@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { User, Shield, CreditCard, Check, Zap, Star, Crown, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { updateUser } from "@/actions/admin-users"; 
+import { getMyTenantContext, updateTenantProfile } from "@/actions/features";
 
 function SettingsContent() {
   const router = useRouter();
@@ -16,11 +17,26 @@ function SettingsContent() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  
+  // Tenant Profile State
+  const [tenantDoc, setTenantDoc] = useState("");
+  const [tenantPhone, setTenantPhone] = useState("");
+  const [tenantEmail, setTenantEmail] = useState("");
+  const [tenantAddress, setTenantAddress] = useState("");
 
   useEffect(() => {
     const cookies = document.cookie.split(';');
     const idCookie = cookies.find(c => c.trim().startsWith('user_id='));
     if (idCookie) setUserId(idCookie.split('=')[1]);
+
+    getMyTenantContext().then(ctx => {
+      if (ctx) {
+        setTenantDoc(ctx.config.document || "");
+        setTenantPhone(ctx.config.phone || "");
+        setTenantEmail(ctx.config.email || "");
+        setTenantAddress(ctx.config.address || "");
+      }
+    });
   }, []);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -30,6 +46,14 @@ function SettingsContent() {
     
     const data = { name, username, password: password || undefined };
     const res = await updateUser(userId, data);
+    
+    // Also update tenant profile data
+    await updateTenantProfile({
+      document: tenantDoc,
+      phone: tenantPhone,
+      email: tenantEmail,
+      address: tenantAddress
+    });
     
     setLoading(false);
     if (res.success) {
@@ -42,7 +66,7 @@ function SettingsContent() {
   };
 
   const handleUpgrade = (plan: string) => {
-    alert(`Redirecionando para checkout do Plano ${plan}...\n\n(Esta é uma simulação da plataforma)`);
+    window.location.href = `mailto:givance@givanceresto.com.br?subject=Solicitação de Upgrade - Plano ${plan}&body=Olá, a cliente Priscila solicita um upgrade para o plano ${plan}.`;
   };
 
   return (
@@ -117,9 +141,27 @@ function SettingsContent() {
                       <label className="block text-sm font-medium mb-1">Nome Completo</label>
                       <input type="text" className="input-field" value={name} onChange={e => setName(e.target.value)} placeholder="Novo nome (opcional)" />
                     </div>
-                    <div className="mb-6">
+                    <div className="mb-4">
                       <label className="block text-sm font-medium mb-1">Nome de Usuário (Login)</label>
                       <input type="text" className="input-field" value={username} onChange={e => setUsername(e.target.value)} placeholder="Novo usuário (opcional)" />
+                    </div>
+                    <hr className="my-6 border-border" />
+                    <h3 className="text-h3 mb-4">Dados da Empresa</h3>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium mb-1">E-mail de Contato</label>
+                      <input type="email" className="input-field" value={tenantEmail} onChange={e => setTenantEmail(e.target.value)} placeholder="email@empresa.com" />
+                    </div>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium mb-1">Telefone / WhatsApp</label>
+                      <input type="text" className="input-field" value={tenantPhone} onChange={e => setTenantPhone(e.target.value)} placeholder="(11) 90000-0000" />
+                    </div>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium mb-1">CPF ou CNPJ</label>
+                      <input type="text" className="input-field" value={tenantDoc} onChange={e => setTenantDoc(e.target.value)} placeholder="000.000.000-00" />
+                    </div>
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium mb-1">Endereço Completo</label>
+                      <textarea className="input-field" value={tenantAddress} onChange={e => setTenantAddress(e.target.value)} placeholder="Rua, Número, Bairro, Cidade" rows={2}></textarea>
                     </div>
                   </>
                 ) : (
@@ -146,11 +188,8 @@ function SettingsContent() {
 
               <div className="grid-3">
                 <div className="card" style={{ borderTop: '4px solid var(--text-muted)' }}>
-                  <div className="flex-between mb-2">
+                  <div className="flex-between mb-4">
                     <h3 className="text-h3 flex items-center" style={{ gap: '0.5rem' }}><Zap size={18} className="text-muted" /> Start</h3>
-                  </div>
-                  <div className="mb-4">
-                    <span className="text-2xl font-bold">R$ 149,90</span><span className="text-muted">/mês</span>
                   </div>
                   <p className="text-sm text-muted mb-6">Ideal para quem está começando e tem apenas 1 loja.</p>
                   <ul className="mb-8 flex flex-col" style={{ gap: '0.75rem', fontSize: '0.875rem' }}>
@@ -160,18 +199,15 @@ function SettingsContent() {
                     <li className="flex items-center text-muted" style={{ gap: '0.5rem', opacity: 0.5 }}><X size={16} /> Comanda Mobile p/ Garçom</li>
                     <li className="flex items-center text-muted" style={{ gap: '0.5rem', opacity: 0.5 }}><X size={16} /> Relatórios Avançados</li>
                   </ul>
-                  <button className="btn btn-secondary w-full" onClick={() => handleUpgrade('STARTER')}>Plano Atual</button>
+                  <button className="btn btn-secondary w-full" onClick={() => handleUpgrade('STARTER')}>Fazer Upgrade</button>
                 </div>
 
                 <div className="card relative" style={{ borderTop: '4px solid var(--accent-primary)', transform: 'scale(1.05)', zIndex: 10, boxShadow: 'var(--shadow-glow)' }}>
                   <div className="absolute top-0 right-0 bg-accent text-white text-xs px-2 py-1 rounded-bl-lg font-bold" style={{ backgroundColor: 'var(--accent-primary)' }}>
                     MAIS POPULAR
                   </div>
-                  <div className="flex-between mb-2">
+                  <div className="flex-between mb-4">
                     <h3 className="text-h3 flex items-center text-accent" style={{ gap: '0.5rem' }}><Star size={18} /> Pro</h3>
-                  </div>
-                  <div className="mb-4">
-                    <span className="text-2xl font-bold">R$ 249,90</span><span className="text-muted">/mês</span>
                   </div>
                   <p className="text-sm text-muted mb-6">A solução completa para operação de salão.</p>
                   <ul className="mb-8 flex flex-col" style={{ gap: '0.75rem', fontSize: '0.875rem' }}>
@@ -182,16 +218,13 @@ function SettingsContent() {
                     <li className="flex items-center text-muted" style={{ gap: '0.5rem', opacity: 0.5 }}><X size={16} /> Multi-lojas</li>
                   </ul>
                   <button className="btn w-full text-white" style={{ background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))' }} onClick={() => handleUpgrade('PRO')}>
-                    Assinar Pro
+                    Fazer Upgrade
                   </button>
                 </div>
 
                 <div className="card" style={{ borderTop: '4px solid #f59e0b' }}>
-                  <div className="flex-between mb-2">
+                  <div className="flex-between mb-4">
                     <h3 className="text-h3 flex items-center" style={{ gap: '0.5rem', color: '#f59e0b' }}><Crown size={18} /> Premium</h3>
-                  </div>
-                  <div className="mb-4">
-                    <span className="text-2xl font-bold">R$ 449,90</span><span className="text-muted">/mês</span>
                   </div>
                   <p className="text-sm text-muted mb-6">Para redes de franquias ou quem tem múltiplas lojas.</p>
                   <ul className="mb-8 flex flex-col" style={{ gap: '0.75rem', fontSize: '0.875rem' }}>
@@ -202,7 +235,7 @@ function SettingsContent() {
                     <li className="flex items-center font-medium" style={{ gap: '0.5rem', color: '#f59e0b' }}><Check size={16} color="#f59e0b" /> DRE & Relatórios Avançados</li>
                   </ul>
                   <button className="btn btn-secondary w-full" style={{ border: '1px solid #f59e0b', color: '#f59e0b' }} onClick={() => handleUpgrade('PREMIUM')}>
-                    Assinar Premium
+                    Fazer Upgrade
                   </button>
                 </div>
               </div>

@@ -56,7 +56,11 @@ export async function createTenant(data: {
   planId: string, 
   adminName: string, 
   adminUser: string, 
-  adminPass: string 
+  adminPass: string,
+  document?: string,
+  phone?: string,
+  email?: string,
+  address?: string
 }) {
   const cookieStore = await cookies();
   const role = cookieStore.get("user_role")?.value;
@@ -79,6 +83,10 @@ export async function createTenant(data: {
         slug: data.slug,
         nicheId: data.nicheId,
         planId: data.planId,
+        document: data.document,
+        phone: data.phone,
+        email: data.email,
+        address: data.address,
         status: "ACTIVE",
         config: {
           create: {
@@ -104,6 +112,8 @@ export async function createTenant(data: {
       nicheModules = ["patients.manage", "calendar.enabled", "clinical_files"];
     } else if (tenant.niche.code === 'RETAIL') {
       nicheModules = ["sales.basic"];
+    } else if (tenant.niche.code === 'VETERINARY') {
+      nicheModules = ["tutores.manage", "animals.manage", "calendar.enabled", "vet_clinical_files", "vaccines.enabled", "exams.enabled", "internment.enabled"];
     }
 
     const allModules = [...baseModules, ...nicheModules];
@@ -181,7 +191,11 @@ export async function updateTenant(id: string, data: {
   planId: string, 
   adminName?: string, 
   adminUser?: string, 
-  adminPass?: string 
+  adminPass?: string,
+  document?: string,
+  phone?: string,
+  email?: string,
+  address?: string
 }) {
   const cookieStore = await cookies();
   const role = cookieStore.get("user_role")?.value;
@@ -196,6 +210,10 @@ export async function updateTenant(id: string, data: {
         slug: data.slug,
         nicheId: data.nicheId,
         planId: data.planId,
+        document: data.document,
+        phone: data.phone,
+        email: data.email,
+        address: data.address
       }
     });
 

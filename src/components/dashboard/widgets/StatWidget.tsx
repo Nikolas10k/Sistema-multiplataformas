@@ -1,11 +1,14 @@
 "use client";
-import { DollarSign, Users, ShoppingBag, Activity } from "lucide-react";
+import { DollarSign, Users, ShoppingBag, Activity, Calendar, Hospital, Syringe } from "lucide-react";
 
 const icons: any = {
   revenue: DollarSign,
   patients: Users,
   sales: ShoppingBag,
-  evolution: Activity
+  evolution: Activity,
+  appointment: Calendar,
+  internment: Hospital,
+  vaccine: Syringe
 };
 
 export default function StatWidget({ title, value, icon, trend, color }: any) {

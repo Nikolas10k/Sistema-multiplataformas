@@ -17,6 +17,8 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
+import { getPatientById } from "@/actions/clinical";
+
 export default function ClinicalFilePage() {
   const { id } = useParams();
   const [activeTab, setActiveTab] = useState("anamnese");
@@ -24,17 +26,28 @@ export default function ClinicalFilePage() {
   const [patient, setPatient] = useState<any>(null);
 
   useEffect(() => {
-    // Mock patient data
-    setPatient({
-      id,
-      name: "João Silva",
-      age: 42,
-      birthDate: "1984-05-12",
-      phone: "(11) 98888-7777",
-      diagnosis: "Hérnia de disco L4-L5",
-      status: "Em tratamento"
-    });
-    setLoading(false);
+    async function fetchPatient() {
+      if (!id || typeof id !== 'string') return;
+      const data = await getPatientById(id);
+      if (data) {
+        setPatient({
+          ...data,
+          age: data.birthDate ? Math.floor((new Date().getTime() - new Date(data.birthDate).getTime()) / 31557600000) : "N/A",
+          status: "Em tratamento"
+        });
+      } else {
+        setPatient({
+          id,
+          name: "Paciente não encontrado",
+          age: "-",
+          phone: "-",
+          diagnosis: "Sem diagnóstico prévio",
+          status: "Não Iniciado"
+        });
+      }
+      setLoading(false);
+    }
+    fetchPatient();
   }, [id]);
 
   if (loading) return <div className="p-8 text-center text-muted">Carregando prontuário...</div>;
@@ -115,7 +128,7 @@ export default function ClinicalFilePage() {
                     className="input-field" 
                     rows={3} 
                     placeholder="Descreva a queixa principal do paciente..."
-                    defaultValue="Dor aguda na região lombar irradiando para a perna esquerda há 3 semanas."
+                    defaultValue=""
                   ></textarea>
                 </div>
 
@@ -132,7 +145,7 @@ export default function ClinicalFilePage() {
 
                 <div className="input-group">
                   <label className="input-label">Objetivos do Tratamento</label>
-                  <textarea className="input-field" rows={3} defaultValue="Redução do quadro álgico, melhora da amplitude de movimento e fortalecimento de core."></textarea>
+                  <textarea className="input-field" rows={3} defaultValue=""></textarea>
                 </div>
               </div>
             </div>
@@ -168,19 +181,9 @@ export default function ClinicalFilePage() {
               <div className="flex flex-col gap-4">
                 <h4 className="text-label">Evoluções Anteriores</h4>
                 
-                {[1, 2].map((i) => (
-                  <div key={i} className="card-flat relative pl-8 border-l-2 border-accent-light">
-                    <div className="absolute left-[-9px] top-6 w-4 height-4 rounded-full bg-accent border-4 border-bg-page"></div>
-                    <div className="flex-between mb-2">
-                      <span className="text-sm font-semibold">2{i}/04/2026</span>
-                      <span className="badge badge-neutral text-xs">Sessão #{3-i}</span>
-                    </div>
-                    <p className="text-sm text-secondary">
-                      Paciente relata melhora significativa na dor irradiada. Realizado exercícios de mobilidade neural e liberação miofascial em paravertebrais.
-                    </p>
-                    <p className="text-xs text-muted mt-2">Registrado por: Dr. Ricardo (Fisioterapeuta)</p>
-                  </div>
-                ))}
+                <div className="p-4 text-center border border-dashed border-border rounded-xl">
+                  <p className="text-muted">Nenhuma evolução registrada ainda.</p>
+                </div>
               </div>
             </div>
           )}
@@ -200,16 +203,7 @@ export default function ClinicalFilePage() {
                   </thead>
                   <tbody>
                     <tr>
-                      <td>20/04/2026</td>
-                      <td>Sessão de Fisioterapia</td>
-                      <td>Dr. Ricardo</td>
-                      <td><span className="badge badge-success">Concluído</span></td>
-                    </tr>
-                    <tr>
-                      <td>18/04/2026</td>
-                      <td>Avaliação Inicial</td>
-                      <td>Dra. Ana</td>
-                      <td><span className="badge badge-success">Concluído</span></td>
+                      <td colSpan={4} className="text-center py-4 text-muted">Nenhum atendimento registrado.</td>
                     </tr>
                   </tbody>
                 </table>

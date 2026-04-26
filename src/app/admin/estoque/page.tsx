@@ -19,16 +19,17 @@ export default function StockPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const [context, setContext] = useState<any>(null);
+
   useEffect(() => {
-    setTimeout(() => setLoading(false), 500);
+    getMyTenantContext().then(ctx => {
+      setContext(ctx);
+      setLoading(false);
+    });
   }, []);
 
-  const inventory = [
-    { id: 1, name: "Cabo USB-C Premium 2m", sku: "CAB-001", stock: 45, minStock: 10, category: "Acessórios", price: 49.90 },
-    { id: 2, name: "Carregador Turbo 20W", sku: "PWR-020", stock: 4, minStock: 15, category: "Energia", price: 89.00 },
-    { id: 3, name: "Fone Bluetooth AirDots", sku: "AUD-112", stock: 12, minStock: 5, category: "Áudio", price: 159.00 },
-    { id: 4, name: "Película de Vidro S23", sku: "PL-S23", stock: 0, minStock: 20, category: "Proteção", price: 25.00 },
-  ];
+  const niche = context?.niche || 'GENERAL';
+  const inventory: any[] = []; // Zerado conforme solicitado
 
   if (loading) return <div className="p-8">Carregando Estoque...</div>;
 
@@ -69,9 +70,11 @@ export default function StockPage() {
         <div>
           <h1 className="text-h1 flex items-center gap-3">
             <Boxes size={32} className="text-accent" />
-            Controle de Estoque
+            {niche === 'PHYSIOTHERAPY' ? 'Materiais Médicos' : 'Controle de Estoque'}
           </h1>
-          <p className="text-muted">Monitore níveis de inventário e gerencie reposições.</p>
+          <p className="text-muted">
+            {niche === 'PHYSIOTHERAPY' ? 'Gerencie o estoque de insumos e materiais clínicos.' : 'Monitore níveis de inventário e gerencie reposições.'}
+          </p>
         </div>
         <div className="flex gap-3">
           <button className="btn btn-secondary">
@@ -92,24 +95,24 @@ export default function StockPage() {
             <AlertTriangle size={18} className="text-danger" />
             <span className="text-xs font-bold uppercase text-danger tracking-widest">Esgotado</span>
           </div>
-          <p className="text-h2">1 item</p>
-          <p className="text-[10px] text-muted">Película de Vidro S23</p>
+          <p className="text-h2">0 itens</p>
+          <p className="text-[10px] text-muted">Nenhum item em falta</p>
         </div>
         <div className="card-flat border-left-warning bg-warning/5">
           <div className="flex items-center gap-3 mb-2">
             <ArrowDown size={18} className="text-warning" />
             <span className="text-xs font-bold uppercase text-warning tracking-widest">Estoque Baixo</span>
           </div>
-          <p className="text-h2">1 item</p>
-          <p className="text-[10px] text-muted">Carregador Turbo 20W</p>
+          <p className="text-h2">0 itens</p>
+          <p className="text-[10px] text-muted">Todos os níveis estão OK</p>
         </div>
         <div className="card-flat border-left-success">
           <div className="flex items-center gap-3 mb-2">
             <Package size={18} className="text-success" />
             <span className="text-xs font-bold uppercase text-muted tracking-widest">Valor em Estoque</span>
           </div>
-          <p className="text-h2">R$ 12.450,00</p>
-          <p className="text-[10px] text-muted">Total de 452 unidades</p>
+          <p className="text-h2">R$ 0,00</p>
+          <p className="text-[10px] text-muted">Total de 0 unidades</p>
         </div>
       </div>
 

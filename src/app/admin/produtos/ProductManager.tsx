@@ -11,11 +11,14 @@ export default function ProductManager({ initialProducts, categories }: { initia
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Form State
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
+  const [cost, setCost] = useState("");
+  const [stock, setStock] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -29,6 +32,8 @@ export default function ProductManager({ initialProducts, categories }: { initia
       setName(product.name);
       setDescription(product.description || "");
       setPrice(product.price.toString());
+      setCost(product.cost?.toString() || "");
+      setStock(product.stock?.toString() || "0");
       setCategoryId(product.category?.name || "");
       setImageUrl(product.imageUrl || "");
       setPreviewUrl(product.imageUrl || "");
@@ -39,6 +44,8 @@ export default function ProductManager({ initialProducts, categories }: { initia
       setName("");
       setDescription("");
       setPrice("");
+      setCost("");
+      setStock("");
       setCategoryId(categories.length > 0 ? categories[0].name : "");
       setImageUrl("");
       setPreviewUrl("");
@@ -88,6 +95,8 @@ export default function ProductManager({ initialProducts, categories }: { initia
       name,
       description,
       price: parseFloat(price) || 0,
+      cost: parseFloat(cost) || null,
+      stock: parseInt(stock, 10) || 0,
       categoryName: categoryId,
       imageUrl: finalImageUrl,
       active
@@ -109,6 +118,12 @@ export default function ProductManager({ initialProducts, categories }: { initia
     }
   };
 
+  const filteredProducts = initialProducts.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
   const handleDelete = async (id: string) => {
     if (confirm("Tem certeza que deseja excluir este produto?")) {
       const res = await deleteProduct(id);
@@ -125,9 +140,18 @@ export default function ProductManager({ initialProducts, categories }: { initia
       <div className="flex-between mb-4">
         <div>
           <h1 className="text-h2">Produtos</h1>
-          <p className="text-muted text-sm mt-1">Gerencie o cardápio e estoque do restaurante.</p>
+          <p className="text-muted text-sm mt-1">Gerencie o cardápio e estoque do seu negócio.</p>
         </div>
-        <div>
+        <div className="flex gap-4 items-center">
+          <div className="input-wrapper" style={{ minWidth: '300px' }}>
+            <input 
+              type="text" 
+              className="input-field input-sm" 
+              placeholder="Pesquisar produtos ou categorias..." 
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
           <button className="btn btn-primary" onClick={() => openModal()}>
             <Plus size={18} />
             Novo Produto
@@ -143,13 +167,15 @@ export default function ProductManager({ initialProducts, categories }: { initia
                 <th>Nome</th>
                 <th>Descrição</th>
                 <th>Categoria</th>
+                <th>Estoque</th>
+                <th>Custo</th>
                 <th>Preço</th>
                 <th>Status</th>
                 <th>Ações</th>
               </tr>
             </thead>
             <tbody>
-              {initialProducts.map(p => (
+              {filteredProducts.map(p => (
                 <tr key={p.id}>
                   <td className="font-medium flex-center" style={{ justifyContent: 'flex-start', gap: '0.5rem' }}>
                     {p.imageUrl ? (
@@ -163,6 +189,12 @@ export default function ProductManager({ initialProducts, categories }: { initia
                     {p.description || "-"}
                   </td>
                   <td>{p.category.name}</td>
+                  <td>
+                    <span className={`badge ${p.stock <= 5 ? 'badge-danger' : 'badge-neutral'}`}>
+                      {p.stock} unid.
+                    </span>
+                  </td>
+                  <td className="text-muted">R$ {p.cost?.toFixed(2) || "0.00"}</td>
                   <td className="font-medium">R$ {p.price.toFixed(2)}</td>
                   <td>
                     <span className={`badge ${p.active ? 'badge-success' : 'badge-danger'}`}>
@@ -210,12 +242,22 @@ export default function ProductManager({ initialProducts, categories }: { initia
                 <input required type="text" className="input-field" value={name} onChange={e => setName(e.target.value)} />
               </div>
               
-              <div className="grid-2 mb-4">
+              <div className="grid-3 mb-4 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Preço (R$) *</label>
+                  <label className="block text-sm font-medium mb-1">Preço de Venda (R$) *</label>
                   <input required type="number" step="0.01" className="input-field" value={price} onChange={e => setPrice(e.target.value)} />
                 </div>
                 <div>
+                  <label className="block text-sm font-medium mb-1">Custo (R$)</label>
+                  <input type="number" step="0.01" className="input-field" value={cost} onChange={e => setCost(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Estoque (Qtd) *</label>
+                  <input required type="number" className="input-field" value={stock} onChange={e => setStock(e.target.value)} />
+                </div>
+              </div>
+              
+              <div className="mb-4">
                   <label className="block text-sm font-medium mb-1">Categoria *</label>
                   <input 
                     required 
@@ -229,7 +271,6 @@ export default function ProductManager({ initialProducts, categories }: { initia
                   <datalist id="category-options">
                     {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                   </datalist>
-                </div>
               </div>
 
               <div className="mb-4">

@@ -9,11 +9,13 @@ import {
   MoreVertical, 
   ChevronRight,
   Activity,
-  FileText
+  FileText,
+  Trash2,
+  Settings2
 } from "lucide-react";
 import { getMyTenantContext } from "@/actions/features";
 import { getTerm } from "@/lib/dictionary";
-import { createPatient, getPatients } from "@/actions/clinical";
+import { createPatient, getPatients, updatePatient, deletePatient } from "@/actions/clinical";
 import Link from "next/link";
 
 export default function PatientsPage() {
@@ -22,6 +24,7 @@ export default function PatientsPage() {
   const [patients, setPatients] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   
   // Form State
   const [newPatient, setNewPatient] = useState({ name: "", phone: "", document: "" });
@@ -41,13 +44,38 @@ export default function PatientsPage() {
   const labelPatients = getTerm("patients", niche);
   const labelPatient = getTerm("customer", niche);
 
+  const openEdit = (patient: any) => {
+    setEditingId(patient.id);
+    setNewPatient({ name: patient.name, phone: patient.phone || "", document: patient.document || "" });
+    setIsModalOpen(true);
+  };
+
   const handleCreate = async () => {
     if (!newPatient.name) return;
-    const res = await createPatient(newPatient);
-    if (res.success) {
-      setPatients([...patients, res.patient]);
-      setIsModalOpen(false);
-      setNewPatient({ name: "", phone: "", document: "" });
+    
+    if (editingId) {
+      const res = await updatePatient(editingId, newPatient);
+      if (res.success) {
+        setPatients(patients.map(p => p.id === editingId ? res.patient : p));
+      }
+    } else {
+      const res = await createPatient(newPatient);
+      if (res.success) {
+        setPatients([...patients, res.patient]);
+      }
+    }
+    
+    setIsModalOpen(false);
+    setEditingId(null);
+    setNewPatient({ name: "", phone: "", document: "" });
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm("Tem certeza que deseja excluir este registro?")) {
+      const res = await deletePatient(id);
+      if (res.success) {
+        setPatients(patients.filter(p => p.id !== id));
+      }
     }
   };
 
@@ -64,8 +92,8 @@ export default function PatientsPage() {
         <div className="modal-overlay flex-center p-4" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(10, 10, 15, 0.9)', zIndex: 1000, backdropFilter: 'blur(12px)' }}>
           <div className="modal-content animate-fade-in" style={{ maxWidth: '500px' }}>
             <div className="p-6 border-bottom flex-between bg-bg-surface">
-              <h2 className="text-h3">Novo {labelPatient}</h2>
-              <button className="btn-circle btn-sm" onClick={() => setIsModalOpen(false)}>
+              <h2 className="text-h3">{editingId ? `Editar ${labelPatient}` : `Novo ${labelPatient}`}</h2>
+              <button className="btn-circle btn-sm" onClick={() => { setIsModalOpen(false); setEditingId(null); setNewPatient({ name: "", phone: "", document: "" }); }}>
                 <Plus size={20} style={{ transform: 'rotate(45deg)' }} />
               </button>
             </div>
@@ -104,8 +132,8 @@ export default function PatientsPage() {
             </div>
 
             <div className="p-6 bg-bg-surface border-top flex gap-3">
-              <button className="btn btn-secondary flex-1" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-              <button className="btn btn-primary flex-1" onClick={handleCreate}>Cadastrar</button>
+              <button className="btn btn-secondary flex-1" onClick={() => { setIsModalOpen(false); setEditingId(null); setNewPatient({ name: "", phone: "", document: "" }); }}>Cancelar</button>
+              <button className="btn btn-primary flex-1" onClick={handleCreate}>{editingId ? 'Salvar Alterações' : 'Cadastrar'}</button>
             </div>
           </div>
         </div>
@@ -196,8 +224,11 @@ export default function PatientsPage() {
                       <Link href={`/admin/fisioterapia/prontuario/${patient.id}`} className="btn btn-secondary btn-sm">
                         Prontuário
                       </Link>
-                      <button className="btn-icon">
-                        <MoreVertical size={18} />
+                      <button className="btn-icon text-accent hover:bg-accent/10" onClick={() => openEdit(patient)}>
+                        <Settings2 size={18} />
+                      </button>
+                      <button className="btn-icon text-danger hover:bg-danger/10" onClick={() => handleDelete(patient.id)}>
+                        <Trash2 size={18} />
                       </button>
                     </div>
                   </td>

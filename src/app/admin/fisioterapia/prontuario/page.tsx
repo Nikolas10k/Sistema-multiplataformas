@@ -25,6 +25,7 @@ export default function ProntuarioListPage() {
   // Form State
   const [selectedPatientId, setSelectedPatientId] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -43,10 +44,14 @@ export default function ProntuarioListPage() {
     if (res.success) {
       alert("Ficha criada com sucesso!");
       setIsModalOpen(false);
-      // Recarrega a lista
       getClinicalRecords().then(setRecords);
     }
   };
+
+  const filteredRecords = records.filter(r => 
+    r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (r.clinicalFiles[0]?.diagnosis && r.clinicalFiles[0].diagnosis.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   if (loading) return <div className="p-8">Carregando Prontuários...</div>;
 
@@ -105,10 +110,21 @@ export default function ProntuarioListPage() {
           </h1>
           <p className="text-muted">Histórico clínico digital e evoluções dos pacientes.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-          <Plus size={18} />
-          Nova Ficha Clínica
-        </button>
+        <div className="flex gap-4 items-center">
+          <div className="input-wrapper" style={{ minWidth: '300px' }}>
+            <input 
+              type="text" 
+              className="input-field input-sm" 
+              placeholder="Pesquisar por paciente ou diagnóstico..." 
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+            <Plus size={18} />
+            Nova Ficha Clínica
+          </button>
+        </div>
       </div>
 
       {/* Quick Access */}
@@ -149,7 +165,7 @@ export default function ProntuarioListPage() {
               </tr>
             </thead>
             <tbody>
-              {records.map((r) => (
+              {filteredRecords.map((r) => (
                 <tr key={r.id}>
                   <td className="font-bold">{r.name}</td>
                   <td>

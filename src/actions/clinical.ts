@@ -24,6 +24,31 @@ export async function createPatient(data: { name: string, phone?: string, docume
   return { success: true, patient };
 }
 
+export async function updatePatient(id: string, data: { name?: string, phone?: string, document?: string, status?: string }) {
+  const tenantId = await getTenant();
+  if (!tenantId) throw new Error("Tenant não identificado");
+
+  const patient = await prisma.patient.update({
+    where: { id, tenantId },
+    data
+  });
+
+  revalidatePath("/admin/pacientes");
+  return { success: true, patient };
+}
+
+export async function deletePatient(id: string) {
+  const tenantId = await getTenant();
+  if (!tenantId) throw new Error("Tenant não identificado");
+
+  await prisma.patient.delete({
+    where: { id, tenantId }
+  });
+
+  revalidatePath("/admin/pacientes");
+  return { success: true };
+}
+
 export async function getPatients() {
   const tenantId = await getTenant();
   if (!tenantId) return [];
@@ -31,6 +56,24 @@ export async function getPatients() {
   return await prisma.patient.findMany({
     where: { tenantId },
     orderBy: { name: 'asc' }
+  });
+}
+
+export async function getPatientById(id: string) {
+  const tenantId = await getTenant();
+  if (!tenantId) return null;
+
+  return await prisma.patient.findFirst({
+    where: { 
+      id,
+      tenantId 
+    },
+    include: {
+      clinicalFiles: {
+        orderBy: { createdAt: 'desc' },
+        take: 1
+      }
+    }
   });
 }
 
