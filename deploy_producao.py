@@ -16,11 +16,11 @@ import sys
 # ============================
 VPS_HOST     = "187.127.25.208"
 VPS_USER     = "root"
-VPS_PASSWORD = "SUA_SENHA_SSH"   # <-- coloque a senha do VPS aqui
+VPS_PASSWORD = "Haven8535@@@@"   # <-- coloque a senha do VPS aqui
 APP_DIR      = "/opt/givanceresto"
 
 DB_USER     = "postgres"
-DB_PASSWORD = "SUA_SENHA_DB"     # <-- coloque a senha do banco aqui
+DB_PASSWORD = "Haven8535@@@@"     # <-- coloque a senha do banco aqui
 DB_NAME     = "restogestao"
 
 # ============================
@@ -115,7 +115,8 @@ if __name__ == "__main__":
     print(f"  Dir: {APP_DIR}")
     print(f"  DB:  {DB_NAME}")
     print("=" * 60)
-    confirm = input("\nDeseja continuar? (s/N): ").strip().lower()
+    # confirm = input("\nDeseja continuar? (s/N): ").strip().lower()
+    confirm = "s"
     if confirm != "s":
         print("Deploy cancelado.")
         sys.exit(0)

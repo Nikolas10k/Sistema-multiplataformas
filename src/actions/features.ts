@@ -9,6 +9,9 @@ export async function getMyTenantContext() {
   const tenantId = cookieStore.get("tenant_id")?.value;
   const role = cookieStore.get("user_role")?.value;
   
+  // Forçar revalidação para evitar cache em dispositivos mobile
+  revalidatePath("/", "layout");
+  
   if (!tenantId || tenantId === 'undefined' || tenantId === 'null' || tenantId.length < 5) {
     if (role === "PLATFORM_ADMIN") {
       return {
