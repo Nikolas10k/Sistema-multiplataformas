@@ -165,7 +165,7 @@ export default function AdminLayout({
     },
     { name: "Painel Geral", icon: LayoutDashboard, path: "/admin" },
     { name: "Pacientes", icon: Users, path: "/admin/pacientes" },
-    { name: "Vendas e Cobranças", icon: Receipt, path: "/admin/vendas", nicheOnly: 'PHYSIOTHERAPY' },
+    { name: "Vendas e Cobranças", icon: Receipt, path: "/admin/vendas" },
     { name: "Sessão", icon: Activity, path: "/admin/agenda", nicheOnly: 'PHYSIOTHERAPY' },
     { name: "Prontuário Eletrônico", icon: FileText, path: "/admin/fisioterapia/prontuario", nicheOnly: 'PHYSIOTHERAPY' },
     { name: "Serviço/Pacotes", icon: ClipboardList, path: "/admin/vendas/servicos", nicheOnly: 'PHYSIOTHERAPY' },
