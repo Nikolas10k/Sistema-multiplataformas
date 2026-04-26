@@ -100,23 +100,48 @@ export default function AdminDashboard() {
 
   return (
     <div className="animate-fade-in">
+      <div className="card mb-8 bg-bg-surface border-accent/20">
+        <div className="flex-between mb-4">
+          <div>
+            <h3 className="text-sm font-bold text-muted uppercase tracking-wider">Meta de Faturamento Mensal</h3>
+            <p className="text-xs text-muted">Defina quanto você deseja faturar este mês.</p>
+          </div>
+          <button className="btn btn-secondary btn-sm" onClick={() => setIsEditingGoal(!isEditingGoal)}>
+            {isEditingGoal ? 'Cancelar' : 'Ajustar Meta'}
+          </button>
+        </div>
+        
+        {isEditingGoal && (
+          <div className="flex gap-4 mb-6 p-4 bg-bg-muted rounded-xl animate-fade-in">
+            <div className="flex-1">
+              <label className="text-[10px] font-bold uppercase text-muted mb-1 block">Valor Alvo (R$)</label>
+              <input 
+                type="number" 
+                className="input-field" 
+                value={goalValue} 
+                onChange={e => setGoalValue(e.target.value)} 
+                placeholder="Ex: 10000" 
+              />
+            </div>
+            <div className="flex items-end">
+              <button className="btn btn-primary h-[42px] px-8" onClick={handleSaveGoal}>Salvar Meta</button>
+            </div>
+          </div>
+        )}
+
+        <div className="w-full bg-bg-muted h-3 rounded-full overflow-hidden mb-3">
+          <div className={`h-full transition-all duration-1000 ${goalProgress >= 100 ? 'bg-success shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-accent shadow-[0_0_10px_rgba(79,70,229,0.5)]'}`} style={{ width: `${goalProgress}%` }}></div>
+        </div>
+        <div className="flex-between">
+          <span className="text-sm font-bold text-accent">{goalProgress}% concluído</span>
+          <span className="text-sm font-mono font-bold">{formatMoney(currentRevenue)} <span className="text-muted font-normal">/ {monthlyGoal > 0 ? formatMoney(monthlyGoal) : 'Meta não definida'}</span></span>
+        </div>
+      </div>
+
       <div className="flex-between mb-8">
         <div>
-          <h1 className="text-h1">Olá, Bem-vindo!</h1>
-          <p className="text-muted">Aqui está o resumo do seu negócio de {getTerm("niche_name", niche)}.</p>
-        </div>
-        <div className="flex gap-3">
-          <button className="btn btn-secondary">
-            <Clock size={18} />
-            Histórico
-          </button>
-          <Link 
-            href={niche === 'PHYSIOTHERAPY' ? "/admin/agenda" : (niche === 'RETAIL' ? "/admin/vendas" : "/pdv")} 
-            className="btn btn-primary"
-          >
-            <Plus size={18} />
-            Novo {getTerm("appointment", niche)}
-          </Link>
+          <h1 className="text-h1">Resumo Operacional</h1>
+          <p className="text-muted">Acompanhe seus indicadores em tempo real.</p>
         </div>
       </div>
 

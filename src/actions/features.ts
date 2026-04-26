@@ -44,6 +44,16 @@ export async function getMyTenantContext() {
     features.add('multiunit.enabled');
   }
 
+  const nicheCode = tenant.niche.code;
+  const defaultColors: Record<string, { primary: string, secondary: string }> = {
+    'PHYSIOTHERAPY': { primary: "#10b981", secondary: "#064e3b" }, // Verde
+    'RESTAURANT': { primary: "#f97316", secondary: "#7c2d12" },    // Laranja
+    'RETAIL': { primary: "#3b82f6", secondary: "#1e3a8a" },        // Azul
+    'VETERINARY': { primary: "#eab308", secondary: "#713f12" },    // Amarelo
+  };
+
+  const theme = defaultColors[nicheCode] || { primary: "#4f46e5", secondary: "#1e293b" };
+
   return {
     tenantId: tenant.id,
     tenantName: tenant.name,
@@ -53,10 +63,10 @@ export async function getMyTenantContext() {
     tenantPhone: (tenant as any).phone || "",
     tenantAddress: (tenant as any).address || "",
     features: Array.from(features),
-    niche: tenant.niche.code,
+    niche: nicheCode,
     config: {
-      primaryColor: tenant.config?.primaryColor || "#4f46e5",
-      secondaryColor: tenant.config?.secondaryColor || "#1e293b",
+      primaryColor: tenant.config?.primaryColor || theme.primary,
+      secondaryColor: tenant.config?.secondaryColor || theme.secondary,
       companyName: tenant.config?.companyName || tenant.name,
       logoUrl: (tenant as any).logoUrl,
       document: (tenant as any).document,

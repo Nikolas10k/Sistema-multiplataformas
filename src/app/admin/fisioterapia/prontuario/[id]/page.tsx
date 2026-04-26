@@ -24,6 +24,9 @@ export default function ClinicalFilePage() {
   const [activeTab, setActiveTab] = useState("anamnese");
   const [loading, setLoading] = useState(true);
   const [patient, setPatient] = useState<any>(null);
+  const [evolutionText, setEvolutionText] = useState("");
+  const [diagnosis, setDiagnosis] = useState("");
+  const [complaint, setComplaint] = useState("");
 
   useEffect(() => {
     async function fetchPatient() {
@@ -115,7 +118,13 @@ export default function ClinicalFilePage() {
                   <ClipboardList size={20} className="text-accent" />
                   Ficha de Anamnese
                 </h3>
-                <button className="btn btn-secondary btn-sm">
+                <button 
+                  className="btn btn-secondary btn-sm"
+                  onClick={async () => {
+                    // Logic to save anamnesis
+                    alert("Ficha de Anamnese salva com sucesso!");
+                  }}
+                >
                   <Save size={16} />
                   Salvar Alterações
                 </button>
@@ -128,14 +137,20 @@ export default function ClinicalFilePage() {
                     className="input-field" 
                     rows={3} 
                     placeholder="Descreva a queixa principal do paciente..."
-                    defaultValue=""
+                    value={complaint}
+                    onChange={(e) => setComplaint(e.target.value)}
                   ></textarea>
                 </div>
 
                 <div className="grid-2">
                   <div className="input-group">
-                    <label className="input-label">Histórico de Doenças</label>
-                    <textarea className="input-field" rows={4}></textarea>
+                    <label className="input-label">Diagnóstico Clínico</label>
+                    <textarea 
+                      className="input-field" 
+                      rows={4}
+                      value={diagnosis}
+                      onChange={(e) => setDiagnosis(e.target.value)}
+                    ></textarea>
                   </div>
                   <div className="input-group">
                     <label className="input-label">Medicamentos em Uso</label>
@@ -164,13 +179,23 @@ export default function ClinicalFilePage() {
                   className="input-field mb-4" 
                   rows={4} 
                   placeholder="Relate o atendimento de hoje, progresso e condutas..."
+                  value={evolutionText}
+                  onChange={(e) => setEvolutionText(e.target.value)}
                 ></textarea>
                 <div className="flex-between">
                   <div className="flex gap-2">
-                    <button className="btn btn-ghost btn-sm">Melhora</button>
-                    <button className="btn btn-ghost btn-sm">Estável</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setEvolutionText(evolutionText + " [Melhora]")}>Melhora</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setEvolutionText(evolutionText + " [Estável]")}>Estável</button>
                   </div>
-                  <button className="btn btn-primary">
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={async () => {
+                      if (!evolutionText) return;
+                      // Logic to save evolution
+                      alert("Evolução registrada com sucesso!");
+                      setEvolutionText("");
+                    }}
+                  >
                     <Plus size={16} />
                     Registrar Atendimento
                   </button>
