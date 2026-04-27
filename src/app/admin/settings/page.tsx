@@ -4,7 +4,9 @@ import { useState, useEffect, Suspense } from "react";
 import { User, Shield, CreditCard, Check, Zap, Star, Crown, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { updateUser } from "@/actions/admin-users"; 
-import { getMyTenantContext, updateTenantProfile } from "@/actions/features";
+import { updateTenantLogo } from "@/actions/tenant";
+import { uploadProductImage } from "@/actions/upload";
+import { useRef } from "react";
 
 function SettingsContent() {
   const router = useRouter();
@@ -23,6 +25,9 @@ function SettingsContent() {
   const [tenantPhone, setTenantPhone] = useState("");
   const [tenantEmail, setTenantEmail] = useState("");
   const [tenantAddress, setTenantAddress] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const cookies = document.cookie.split(';');
@@ -35,9 +40,28 @@ function SettingsContent() {
         setTenantPhone(ctx.config.phone || "");
         setTenantEmail(ctx.config.email || "");
         setTenantAddress(ctx.config.address || "");
+        setLogoUrl(ctx.tenantLogo || "");
       }
     });
   }, []);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingLogo(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const result = await uploadProductImage(formData);
+    setUploadingLogo(false);
+
+    if (result.success && result.url) {
+      setLogoUrl(result.url);
+    } else {
+      alert(result.message || "Erro ao fazer upload da imagem.");
+    }
+  };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,14 +76,19 @@ function SettingsContent() {
       document: tenantDoc,
       phone: tenantPhone,
       email: tenantEmail,
-      address: tenantAddress
+      address: tenantAddress,
+      logoUrl
     });
+    
+    if (logoUrl) {
+      await updateTenantLogo(logoUrl);
+    }
     
     setLoading(false);
     if (res.success) {
       alert("Perfil atualizado com sucesso!");
       setPassword("");
-      router.refresh();
+      window.location.reload(); // Reload to update sidebar and avatar
     } else {
       alert(res.message || "Erro ao atualizar");
     }
@@ -145,6 +174,36 @@ function SettingsContent() {
                       <label className="block text-sm font-medium mb-1">Nome de Usuário (Login)</label>
                       <input type="text" className="input-field" value={username} onChange={e => setUsername(e.target.value)} placeholder="Novo usuário (opcional)" />
                     </div>
+                    <hr className="my-6 border-border" />
+                    <h3 className="text-h3 mb-4">Identidade Visual da Empresa</h3>
+                    <div className="mb-6 flex items-center gap-6">
+                      <div className="w-24 h-24 rounded-xl bg-bg-muted border border-border flex-center overflow-hidden">
+                        {logoUrl ? (
+                          <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
+                        ) : (
+                          <span className="text-xs text-muted text-center p-2">Sem Logo</span>
+                        )}
+                      </div>
+                      <div>
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          className="hidden" 
+                          ref={fileInputRef} 
+                          onChange={handleFileUpload} 
+                        />
+                        <button 
+                          type="button"
+                          className="btn btn-secondary btn-sm mb-2" 
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadingLogo}
+                        >
+                          {uploadingLogo ? "Enviando..." : "Alterar Logo"}
+                        </button>
+                        <p className="text-xs text-muted">A logo aparecerá no menu lateral e nos cabeçalhos.</p>
+                      </div>
+                    </div>
+
                     <hr className="my-6 border-border" />
                     <h3 className="text-h3 mb-4">Dados da Empresa</h3>
                     <div className="mb-4">
