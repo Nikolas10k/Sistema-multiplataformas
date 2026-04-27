@@ -49,9 +49,9 @@ export default function ProfileDropdown({
         onClick={() => setIsOpen(!isOpen)}
         className="profile-dropdown-trigger"
       >
-        <div className="profile-avatar overflow-hidden">
+        <div className="profile-avatar overflow-hidden" style={{ backgroundColor: avatarUrl ? 'var(--bg-muted)' : 'transparent' }}>
           {avatarUrl ? (
-            <img src={avatarUrl} alt={userName} className="w-full h-full object-cover" />
+            <img src={avatarUrl} alt={userName} className="w-full h-full object-contain p-1" />
           ) : (
             userInitials || "A"
           )}

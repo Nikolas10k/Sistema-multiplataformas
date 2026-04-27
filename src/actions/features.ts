@@ -77,7 +77,7 @@ export async function getMyTenantContext() {
     tenantId: tenant.id,
     tenantName: tenant.name,
     tenantDomain: (tenant as any).domain || tenant.slug,
-    tenantLogo: (tenant as any).logoUrl || null,
+    tenantLogo: tenant.config?.logoUrl || (tenant as any).logoUrl || null,
     tenantEmail: (tenant as any).email || "",
     tenantPhone: (tenant as any).phone || "",
     tenantAddress: (tenant as any).address || "",

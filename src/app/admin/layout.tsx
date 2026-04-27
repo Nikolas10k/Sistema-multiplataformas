@@ -217,14 +217,14 @@ export default function AdminLayout({
     <div className="admin-layout">
       {/* ======================== SIDEBAR ======================== */}
       <aside className={`sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
-        <div className="sidebar-header" style={{ height: 'auto', minHeight: '90px', padding: '1.5rem 1rem', flexDirection: 'column', gap: '0.5rem' }}>
+        <div className="sidebar-header" style={{ height: 'auto', minHeight: '90px', padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
           {context?.tenantLogo ? (
-            <div className="flex flex-col items-center w-full gap-2">
-              <div className="w-full flex-center" style={{ height: '50px' }}>
+            <div className={`flex flex-col items-center w-full gap-2 ${!isSidebarOpen ? 'px-1' : ''}`}>
+              <div className="w-full flex-center" style={{ height: isSidebarOpen ? '50px' : '32px' }}>
                 <img src={context.tenantLogo} alt="Logo" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
               </div>
               {isSidebarOpen && (
-                <span className="sidebar-brand-name" style={{ fontSize: '0.9rem', opacity: 0.8 }}>{context?.tenantName}</span>
+                <span className="sidebar-brand-name" style={{ fontSize: '0.9rem', opacity: 0.8, textAlign: 'center' }}>{context?.tenantName}</span>
               )}
             </div>
           ) : (
