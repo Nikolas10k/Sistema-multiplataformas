@@ -5,7 +5,7 @@ import { Plus, Edit, Trash2, X } from "lucide-react";
 import { createUser, updateUser, deleteUser } from "@/actions/admin-users";
 import { useRouter } from "next/navigation";
 
-export default function UserManager({ initialUsers }: { initialUsers: any[] }) {
+export default function UserManager({ initialUsers, niche }: { initialUsers: any[], niche: string }) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -16,6 +16,19 @@ export default function UserManager({ initialUsers }: { initialUsers: any[] }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("WAITER");
+  const [permissions, setPermissions] = useState<string[]>([]);
+
+  const AVAILABLE_PERMISSIONS = [
+    { path: "/admin/pacientes", name: "Pacientes", nicheOnly: "PHYSIOTHERAPY" },
+    { path: "/admin/fisioterapia/prontuario", name: "Prontuários", nicheOnly: "PHYSIOTHERAPY" },
+    { path: "/admin/agenda", name: "Agenda", nicheOnly: "PHYSIOTHERAPY" },
+    { path: "/pdv", name: "PDV (Mesas / Balcão)", nicheOnly: "RESTAURANT" },
+    { path: "/admin/vendas", name: "Vendas e Caixas" },
+    { path: "/admin/produtos", name: "Estoque / Catálogo" },
+    { path: "/admin/vendas/servicos", name: "Serviços", nicheOnly: "PHYSIOTHERAPY" },
+    { path: "/admin/relatorios", name: "Relatórios" },
+    { path: "/admin/configuracoes", name: "Configurações" }
+  ];
 
   const openModal = (user?: any) => {
     if (user) {
@@ -24,12 +37,14 @@ export default function UserManager({ initialUsers }: { initialUsers: any[] }) {
       setUsername(user.username);
       setPassword(""); // Don't show existing password
       setRole(user.role);
+      setPermissions(user.permissions || []);
     } else {
       setEditingId(null);
       setName("");
       setUsername("");
       setPassword("");
       setRole("WAITER");
+      setPermissions([]);
     }
     setIsModalOpen(true);
   };
@@ -44,8 +59,10 @@ export default function UserManager({ initialUsers }: { initialUsers: any[] }) {
       name,
       username,
       password,
-      role
+      role,
+      permissions
     };
+
 
     let res;
     if (editingId) {
@@ -185,6 +202,32 @@ export default function UserManager({ initialUsers }: { initialUsers: any[] }) {
                     </div>
                   </div>
                 </div>
+
+                {role !== "ADMIN" && (
+                  <div className="bg-bg-muted p-5 rounded-2xl border border-border">
+                    <h3 className="text-xs font-bold uppercase text-accent mb-4 tracking-widest">Permissões de Acesso</h3>
+                    <p className="text-xs text-muted mb-4">Selecione quais telas este funcionário poderá acessar. (Opcional)</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {AVAILABLE_PERMISSIONS.filter(p => !p.nicheOnly || p.nicheOnly === niche).map(p => (
+                        <label key={p.path} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-bg-surface transition-colors">
+                          <input 
+                            type="checkbox" 
+                            className="rounded border-border text-accent focus:ring-accent"
+                            checked={permissions.includes(p.path)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setPermissions([...permissions, p.path]);
+                              } else {
+                                setPermissions(permissions.filter(x => x !== p.path));
+                              }
+                            }}
+                          />
+                          <span className="text-sm font-medium">{p.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </form>
 

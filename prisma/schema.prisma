@@ -175,6 +175,8 @@ model UserTenantRole {
   tenantId  String
   roleId    String
   
+  customPermissions String? // JSON string array of allowed feature paths/keys
+  
   user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   role      Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)

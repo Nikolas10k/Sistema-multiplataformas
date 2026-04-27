@@ -57,6 +57,22 @@ export async function getMyTenantContext() {
 
   const theme = defaultColors[nicheCode] || { primary: "#4f46e5", secondary: "#1e293b" };
 
+  const userId = cookieStore.get("user_id")?.value;
+  let userPermissions: string[] = [];
+
+  if (userId) {
+    const userRoleObj = await prisma.userTenantRole.findUnique({
+      where: { userId_tenantId: { userId, tenantId } }
+    });
+    if (userRoleObj?.customPermissions) {
+      try {
+        userPermissions = JSON.parse(userRoleObj.customPermissions);
+      } catch (e) {
+        console.error("Failed to parse customPermissions", e);
+      }
+    }
+  }
+
   return {
     tenantId: tenant.id,
     tenantName: tenant.name,
@@ -66,6 +82,7 @@ export async function getMyTenantContext() {
     tenantPhone: (tenant as any).phone || "",
     tenantAddress: (tenant as any).address || "",
     features: Array.from(features),
+    userPermissions,
     niche: nicheCode,
     config: {
       primaryColor: tenant.config?.primaryColor || theme.primary,

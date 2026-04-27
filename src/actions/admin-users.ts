@@ -9,6 +9,8 @@ export async function createUser(data: any) {
   if (!tenantId) return { success: false, message: "Não autenticado" };
 
   try {
+    const customPermissions = data.permissions ? JSON.stringify(data.permissions) : null;
+    
     const existing = await prisma.user.findUnique({
       where: { username: data.username }
     });
@@ -28,7 +30,8 @@ export async function createUser(data: any) {
         data: {
           userId: existing.id,
           tenantId,
-          roleId: role?.id || ""
+          roleId: role?.id || "",
+          customPermissions
         }
       });
       return { success: true };
@@ -49,7 +52,8 @@ export async function createUser(data: any) {
       data: {
         userId: user.id,
         tenantId,
-        roleId: role?.id || ""
+        roleId: role?.id || "",
+        customPermissions
       }
     });
 
@@ -75,7 +79,7 @@ export async function updateUser(id: string, data: any) {
       }
     }
 
-    const { role: newRole, ...userData } = data;
+    const { role: newRole, permissions, ...userData } = data;
     
     if (!userData.password) delete userData.password;
 
@@ -84,15 +88,23 @@ export async function updateUser(id: string, data: any) {
       data: userData
     });
 
+    const customPermissions = permissions ? JSON.stringify(permissions) : null;
+
     if (newRole) {
       const role = await prisma.role.findUnique({ where: { name: newRole } });
       if (role) {
         await prisma.userTenantRole.upsert({
           where: { userId_tenantId: { userId: id, tenantId } },
-          update: { roleId: role.id },
-          create: { userId: id, tenantId, roleId: role.id }
+          update: { roleId: role.id, customPermissions },
+          create: { userId: id, tenantId, roleId: role.id, customPermissions }
         });
       }
+    } else {
+      // Just update permissions if role isn't changing but permissions might be
+      await prisma.userTenantRole.update({
+        where: { userId_tenantId: { userId: id, tenantId } },
+        data: { customPermissions }
+      });
     }
 
     return { success: true };

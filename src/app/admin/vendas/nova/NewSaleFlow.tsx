@@ -9,13 +9,15 @@ import {
 } from "lucide-react";
 import { getPatients } from "@/actions/clinical";
 import { getServices, createSale } from "@/actions/sales";
+import { getProductsAndCategories } from "@/actions/products";
 
-const STEPS = ["Paciente", "Serviços", "Pagamento"];
+const STEPS = ["Paciente", "Itens", "Pagamento"];
 
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace(".", ",")}`;
 
 interface CartItem {
-  service: any;
+  item: any; // Can be Service or Product
+  type: 'SERVICE' | 'PRODUCT';
   quantity: number;
   unitPrice: number;
   discountItem: number;
@@ -28,7 +30,7 @@ export default function NewSaleFlow() {
 
   // Data
   const [patients,  setPatients]  = useState<any[]>([]);
-  const [services,  setServices]  = useState<any[]>([]);
+  const [catalog,   setCatalog]   = useState<any[]>([]);
 
   // Step 1 – Patient
   const [patientSearch, setPatientSearch] = useState("");
@@ -36,7 +38,7 @@ export default function NewSaleFlow() {
   const [attendanceType, setAttendanceType] = useState("PARTICULAR");
 
   // Step 2 – Cart
-  const [serviceSearch, setServiceSearch] = useState("");
+  const [itemSearch, setItemSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discountTotal, setDiscountTotal] = useState("");
 
@@ -47,9 +49,21 @@ export default function NewSaleFlow() {
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
-    Promise.all([getPatients(), getServices()]).then(([p, s]) => {
+    Promise.all([getPatients(), getServices(), getProductsAndCategories()]).then(([p, s, prodData]) => {
       setPatients(p);
-      setServices(s.filter((sv: any) => sv.active));
+      
+      const servicesFormatted = s.filter((sv: any) => sv.active).map((sv: any) => ({
+        ...sv,
+        catalogType: 'SERVICE'
+      }));
+
+      const productsFormatted = prodData.products.map((pr: any) => ({
+        ...pr,
+        catalogType: 'PRODUCT',
+        category: pr.category || 'Materiais'
+      }));
+
+      setCatalog([...servicesFormatted, ...productsFormatted]);
     });
   }, []);
 
@@ -64,21 +78,27 @@ export default function NewSaleFlow() {
   const saleStatus = paid >= total ? "PAGO" : paid > 0 ? "PARCIAL" : "PENDENTE";
 
   // ── Cart helpers ──
-  const addToCart = (service: any) => {
-    const exists = cart.find(i => i.service.id === service.id);
+  const addToCart = (item: any) => {
+    const exists = cart.find(i => i.item.id === item.id);
     if (exists) {
-      setCart(cart.map(i => i.service.id === service.id ? { ...i, quantity: i.quantity + 1 } : i));
+      setCart(cart.map(i => i.item.id === item.id ? { ...i, quantity: i.quantity + 1 } : i));
     } else {
-      setCart([...cart, { service, quantity: 1, unitPrice: service.price, discountItem: 0 }]);
+      setCart([...cart, { 
+        item, 
+        type: item.catalogType,
+        quantity: 1, 
+        unitPrice: item.price, 
+        discountItem: 0 
+      }]);
     }
   };
 
-  const removeFromCart = (serviceId: string) => {
-    setCart(cart.filter(i => i.service.id !== serviceId));
+  const removeFromCart = (itemId: string) => {
+    setCart(cart.filter(i => i.item.id !== itemId));
   };
 
-  const updateItem = (serviceId: string, field: keyof CartItem, value: any) => {
-    setCart(cart.map(i => i.service.id === serviceId ? { ...i, [field]: value } : i));
+  const updateItem = (itemId: string, field: keyof CartItem, value: any) => {
+    setCart(cart.map(i => i.item.id === itemId ? { ...i, [field]: value } : i));
   };
 
   // ── Submit ──
@@ -93,12 +113,13 @@ export default function NewSaleFlow() {
       discountValue,
       amountPaid: paid,
       dueDate: dueDate || undefined,
-      items: cart.map(item => ({
-        serviceId: item.service.id,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        discountItem: item.discountItem,
-        sessionsTotal: item.service.sessions * item.quantity,
+      items: cart.map(cartItem => ({
+        serviceId: cartItem.type === 'SERVICE' ? cartItem.item.id : null,
+        productId: cartItem.type === 'PRODUCT' ? cartItem.item.id : null,
+        quantity: cartItem.quantity,
+        unitPrice: cartItem.unitPrice,
+        discountItem: cartItem.discountItem,
+        sessionsTotal: cartItem.type === 'SERVICE' ? (cartItem.item.sessions || 1) * cartItem.quantity : 0,
       })),
     });
     setSubmitting(false);
@@ -115,9 +136,9 @@ export default function NewSaleFlow() {
     (p.document && p.document.includes(patientSearch))
   );
 
-  const filteredServices = services.filter(s =>
-    s.name.toLowerCase().includes(serviceSearch.toLowerCase()) ||
-    s.category.toLowerCase().includes(serviceSearch.toLowerCase())
+  const filteredCatalog = catalog.filter(c =>
+    c.name.toLowerCase().includes(itemSearch.toLowerCase()) ||
+    (c.category && c.category.toLowerCase().includes(itemSearch.toLowerCase()))
   );
 
   return (
@@ -226,7 +247,7 @@ export default function NewSaleFlow() {
         </div>
       )}
 
-      {/* ─── Step 1: Services ─── */}
+      {/* ─── Step 1: Items ─── */}
       {step === 1 && (
         <div className="grid-2" style={{ gap: "1.5rem" }}>
           {/* Left: Catalog */}
@@ -234,10 +255,10 @@ export default function NewSaleFlow() {
             <h2 className="text-h3 flex items-center gap-2"><ShoppingBag size={20} className="text-accent" /> Catálogo</h2>
             <div className="input-wrapper">
               <Search size={14} className="input-icon" />
-              <input className="input-field input-sm with-icon" placeholder="Pesquisar serviço..." value={serviceSearch} onChange={e => setServiceSearch(e.target.value)} />
+              <input className="input-field input-sm with-icon" placeholder="Pesquisar serviço ou material..." value={itemSearch} onChange={e => setItemSearch(e.target.value)} />
             </div>
             <div className="flex flex-col gap-2" style={{ maxHeight: 400, overflowY: "auto" }}>
-              {filteredServices.map(s => (
+              {filteredCatalog.map(s => (
                 <button key={s.id} onClick={() => addToCart(s)}
                   className="w-full text-left p-4 rounded-xl border border-border hover:border-accent/40 hover:bg-bg-muted transition-all"
                 >
@@ -245,7 +266,9 @@ export default function NewSaleFlow() {
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="font-medium">{s.name}</p>
-                        <span className={`badge ${s.type === "PACOTE" ? "badge-accent" : "badge-info"} text-[10px]`}>{s.type}</span>
+                        <span className={`badge ${s.catalogType === "SERVICE" ? (s.type === 'PACOTE' ? "badge-accent" : "badge-info") : "badge-neutral"} text-[10px]`}>
+                          {s.catalogType === "SERVICE" ? s.type : 'PRODUTO'}
+                        </span>
                       </div>
                       <p className="text-xs text-muted">{s.category} {s.sessions > 1 ? `• ${s.sessions} sessões` : ""}</p>
                     </div>
@@ -256,10 +279,10 @@ export default function NewSaleFlow() {
                   </div>
                 </button>
               ))}
-              {filteredServices.length === 0 && (
+              {filteredCatalog.length === 0 && (
                 <div className="p-8 text-center text-muted">
                   <ShoppingBag size={28} className="mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">Nenhum serviço ativo encontrado.</p>
+                  <p className="text-sm">Nenhum item ativo encontrado.</p>
                 </div>
               )}
             </div>
@@ -272,28 +295,28 @@ export default function NewSaleFlow() {
               {cart.length === 0 && (
                 <div className="flex-center flex-col p-8 text-muted border border-dashed border-border rounded-xl">
                   <ShoppingBag size={28} className="mb-2 opacity-30" />
-                  <p className="text-sm">Adicione serviços do catálogo</p>
+                  <p className="text-sm">Adicione itens do catálogo</p>
                 </div>
               )}
               {cart.map(item => (
-                <div key={item.service.id} className="p-4 rounded-xl border border-border bg-bg-muted/30">
+                <div key={item.item.id} className="p-4 rounded-xl border border-border bg-bg-muted/30">
                   <div className="flex-between mb-3">
                     <div>
-                      <p className="font-medium text-sm">{item.service.name}</p>
+                      <p className="font-medium text-sm">{item.item.name}</p>
                       <p className="text-xs text-muted">{fmt(item.unitPrice)} × {item.quantity}</p>
                     </div>
-                    <button className="btn-icon text-danger btn-sm" onClick={() => removeFromCart(item.service.id)}><Trash2 size={14} /></button>
+                    <button className="btn-icon text-danger btn-sm" onClick={() => removeFromCart(item.item.id)}><Trash2 size={14} /></button>
                   </div>
                   <div className="grid-2" style={{ gap: "0.5rem" }}>
                     <div>
                       <label className="text-xs text-muted mb-1 block">Qtd</label>
                       <input type="number" min="1" className="input-field input-sm" value={item.quantity}
-                        onChange={e => updateItem(item.service.id, "quantity", parseInt(e.target.value) || 1)} />
+                        onChange={e => updateItem(item.item.id, "quantity", parseInt(e.target.value) || 1)} />
                     </div>
                     <div>
                       <label className="text-xs text-muted mb-1 block">Desconto (R$)</label>
                       <input type="number" min="0" step="0.01" className="input-field input-sm" value={item.discountItem}
-                        onChange={e => updateItem(item.service.id, "discountItem", parseFloat(e.target.value) || 0)} />
+                        onChange={e => updateItem(item.item.id, "discountItem", parseFloat(e.target.value) || 0)} />
                     </div>
                   </div>
                 </div>
@@ -337,8 +360,8 @@ export default function NewSaleFlow() {
             )}
             <div className="flex flex-col gap-2">
               {cart.map(item => (
-                <div key={item.service.id} className="flex-between text-sm p-2 rounded-lg hover:bg-bg-muted">
-                  <span>{item.service.name} × {item.quantity}</span>
+                <div key={item.item.id} className="flex-between text-sm p-2 rounded-lg hover:bg-bg-muted">
+                  <span>{item.item.name} × {item.quantity}</span>
                   <span className="font-medium">{fmt(item.unitPrice * item.quantity - item.discountItem)}</span>
                 </div>
               ))}

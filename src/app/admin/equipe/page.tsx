@@ -8,6 +8,11 @@ export default async function AdminEquipe() {
 
   if (!tenantId) return <div>Não autenticado</div>;
 
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    include: { niche: true }
+  });
+
   const userRoles = await prisma.userTenantRole.findMany({
     where: { tenantId },
     include: {
@@ -19,8 +24,9 @@ export default async function AdminEquipe() {
 
   const users = userRoles.map(ur => ({
     ...ur.user,
-    role: ur.role.name
+    role: ur.role.name,
+    permissions: ur.customPermissions ? JSON.parse(ur.customPermissions) : []
   }));
 
-  return <UserManager initialUsers={users} />;
+  return <UserManager initialUsers={users} niche={tenant?.niche?.code || 'GENERAL'} />;
 }

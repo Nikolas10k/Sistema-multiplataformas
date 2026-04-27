@@ -187,7 +187,18 @@ export default function AdminLayout({
   const menuItems = allItems.filter(item => {
     if (userRole === 'PLATFORM_ADMIN') return true;
     if (item.nicheOnly && niche !== item.nicheOnly) return false;
-    return features.includes(item.feature) || !item.feature;
+    
+    const tenantFeatureAllowed = features.includes(item.feature) || !item.feature;
+    
+    // Check specific user permissions
+    if (userRole !== 'ADMIN' && context?.userPermissions && context.userPermissions.length > 0) {
+      // Allow general dashboard explicitly or check path
+      if (item.path !== '/admin' && !context.userPermissions.includes(item.path)) {
+        return false;
+      }
+    }
+    
+    return tenantFeatureAllowed;
   });
 
   const initials = userName
