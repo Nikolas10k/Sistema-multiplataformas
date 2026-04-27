@@ -4,9 +4,11 @@ import { useState, useEffect, Suspense } from "react";
 import { User, Shield, CreditCard, Check, Zap, Star, Crown, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { updateUser } from "@/actions/admin-users"; 
+import { getMyTenantContext, updateTenantProfile } from "@/actions/features";
 import { updateTenantLogo } from "@/actions/tenant";
 import { uploadProductImage } from "@/actions/upload";
 import { useRef } from "react";
+
 
 function SettingsContent() {
   const router = useRouter();
