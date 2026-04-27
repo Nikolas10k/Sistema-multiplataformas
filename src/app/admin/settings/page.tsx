@@ -112,35 +112,48 @@ function SettingsContent() {
     }
   };
 
-  const handleUpdateProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userId) return;
-    setLoading(true);
-    
-    const data = { name, username, password: password || undefined };
-    const res = await updateUser(userId, data);
-    
-    // Also update tenant profile data
-    await updateTenantProfile({
-      document: tenantDoc,
-      phone: tenantPhone,
-      email: tenantEmail,
-      address: tenantAddress,
-      logoUrl
-    });
-    
-    await updateTenantBranding({
-      logoUrl,
-      primaryColor
-    });
-    
-    setLoading(false);
-    if (res.success) {
-      alert("Perfil atualizado com sucesso!");
+    try {
+      const data = { name, username, password: password || undefined };
+      const res = await updateUser(userId, data);
+      
+      if (!res.success) {
+        throw new Error(res.message || "Erro ao atualizar dados do usuário");
+      }
+
+      // Update tenant profile data
+      const profileRes = await updateTenantProfile({
+        document: tenantDoc,
+        phone: tenantPhone,
+        email: tenantEmail,
+        address: tenantAddress,
+        logoUrl
+      });
+
+      if (!profileRes.success) {
+        throw new Error(profileRes.message || "Erro ao atualizar dados da empresa");
+      }
+      
+      const brandingRes = await updateTenantBranding({
+        logoUrl,
+        primaryColor
+      });
+
+      if (!brandingRes.success) {
+        throw new Error("Erro ao atualizar identidade visual");
+      }
+      
+      alert("Alterações salvas com sucesso!");
       setPassword("");
-      window.location.reload(); // Reload to update sidebar and avatar
-    } else {
-      alert(res.message || "Erro ao atualizar");
+      
+      // Pequeno delay antes de recarregar para garantir que o usuário viu o sucesso
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+
+    } catch (error: any) {
+      alert(error.message || "Ocorreu um erro ao salvar as alterações.");
+    } finally {
+      setLoading(false);
     }
   };
 
