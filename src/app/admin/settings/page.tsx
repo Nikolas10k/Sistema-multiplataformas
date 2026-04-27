@@ -112,6 +112,11 @@ function SettingsContent() {
     }
   };
 
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId) return;
+    setLoading(true);
+
     try {
       const data = { name, username, password: password || undefined };
       const res = await updateUser(userId, data);
