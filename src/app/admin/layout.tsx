@@ -77,8 +77,11 @@ export default function AdminLayout({
   // Injeção de variáveis de tema e título
   useEffect(() => {
     if (context?.config?.primaryColor) {
-      document.documentElement.style.setProperty('--accent', context.config.primaryColor);
-      document.documentElement.style.setProperty('--accent-hover', `${context.config.primaryColor}dd`);
+      const color = context.config.primaryColor;
+      document.documentElement.style.setProperty('--accent', color);
+      document.documentElement.style.setProperty('--accent-hover', `${color}dd`);
+      document.documentElement.style.setProperty('--accent-light', `${color}15`); // Transparência para fundo de menus ativos
+      document.documentElement.style.setProperty('--accent-border', `${color}30`);
     }
     if (context?.config?.companyName) {
       document.title = `${context.config.companyName} | Givance`;

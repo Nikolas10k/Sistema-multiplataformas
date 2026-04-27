@@ -5,7 +5,7 @@ import { User, Shield, CreditCard, Check, Zap, Star, Crown, X } from "lucide-rea
 import { useRouter, useSearchParams } from "next/navigation";
 import { updateUser } from "@/actions/admin-users"; 
 import { getMyTenantContext, updateTenantProfile } from "@/actions/features";
-import { updateTenantLogo } from "@/actions/tenant";
+import { updateTenantLogo, updateTenantBranding } from "@/actions/tenant";
 import { uploadProductImage } from "@/actions/upload";
 import { useRef } from "react";
 
@@ -28,6 +28,7 @@ function SettingsContent() {
   const [tenantEmail, setTenantEmail] = useState("");
   const [tenantAddress, setTenantAddress] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
+  const [primaryColor, setPrimaryColor] = useState("#4f46e5");
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -43,9 +44,43 @@ function SettingsContent() {
         setTenantEmail(ctx.config.email || "");
         setTenantAddress(ctx.config.address || "");
         setLogoUrl(ctx.tenantLogo || "");
+        setPrimaryColor(ctx.config.primaryColor || "#4f46e5");
       }
     });
   }, []);
+
+  const extractDominantColor = (imageUrl: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "Anonymous";
+      img.src = imageUrl;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return resolve("#4f46e5");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        
+        let r = 0, g = 0, b = 0, count = 0;
+        for (let i = 0; i < data.length; i += 100) { 
+          r += data[i];
+          g += data[i+1];
+          b += data[i+2];
+          count++;
+        }
+        
+        const rgbToHex = (r: number, g: number, b: number) => "#" + [r, g, b].map(x => {
+          const hex = Math.round(x).toString(16);
+          return hex.length === 1 ? "0" + hex : hex;
+        }).join("");
+        
+        resolve(rgbToHex(r/count, g/count, b/count));
+      };
+      img.onerror = () => resolve("#4f46e5");
+    });
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -60,6 +95,11 @@ function SettingsContent() {
 
     if (result.success && result.url) {
       setLogoUrl(result.url);
+      const color = await extractDominantColor(result.url);
+      setPrimaryColor(color);
+      // Feedback visual imediato
+      document.documentElement.style.setProperty('--accent', color);
+      document.documentElement.style.setProperty('--accent-hover', `${color}dd`);
     } else {
       alert(result.message || "Erro ao fazer upload da imagem.");
     }
@@ -82,9 +122,10 @@ function SettingsContent() {
       logoUrl
     });
     
-    if (logoUrl) {
-      await updateTenantLogo(logoUrl);
-    }
+    await updateTenantBranding({
+      logoUrl,
+      primaryColor
+    });
     
     setLoading(false);
     if (res.success) {
