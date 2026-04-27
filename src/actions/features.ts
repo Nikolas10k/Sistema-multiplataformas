@@ -97,7 +97,7 @@ export async function getMyTenantContext() {
   };
 }
 
-export async function updateTenantProfile(data: { document?: string, email?: string, phone?: string, address?: string }) {
+export async function updateTenantProfile(data: { document?: string, email?: string, phone?: string, address?: string, logoUrl?: string }) {
   const cookieStore = await cookies();
   const tenantId = cookieStore.get("tenant_id")?.value;
   
@@ -112,7 +112,8 @@ export async function updateTenantProfile(data: { document?: string, email?: str
         document: data.document,
         email: data.email,
         phone: data.phone,
-        address: data.address
+        address: data.address,
+        logoUrl: data.logoUrl
       }
     });
 

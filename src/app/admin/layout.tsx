@@ -329,6 +329,7 @@ export default function AdminLayout({
               userInitials={initials}
               userName={userName}
               role={userRole}
+              avatarUrl={context?.tenantLogo}
             />
 
             <button 

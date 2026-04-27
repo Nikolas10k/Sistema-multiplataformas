@@ -13,17 +13,21 @@ import {
 } from "lucide-react";
 import { getMyTenantContext } from "@/actions/features";
 import { updateTenantLogo, updateTenantSettings } from "@/actions/tenant";
+import { uploadProductImage } from "@/actions/upload";
+import { useRef } from "react";
 
 export default function ConfiguracoesPage() {
   const [context, setContext] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoUrl, setLogoUrl] = useState("");
   const [name, setName] = useState("");
   const [domain, setDomain] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     getMyTenantContext().then(ctx => {
@@ -53,9 +57,22 @@ export default function ConfiguracoesPage() {
     }
   };
 
-  const simulateUpload = () => {
-    const url = prompt("Insira a URL da imagem da sua logo (Simulação de upload):", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6A6Uq_vV9Cis3O1e8jQ2KkZc6oGv_N5U9vA&s");
-    if (url) setLogoUrl(url);
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingLogo(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const result = await uploadProductImage(formData);
+    setUploadingLogo(false);
+
+    if (result.success && result.url) {
+      setLogoUrl(result.url);
+    } else {
+      alert(result.message || "Erro ao fazer upload da imagem.");
+    }
   };
 
   if (loading) return <div className="p-8">Carregando configurações...</div>;
@@ -107,8 +124,19 @@ export default function ConfiguracoesPage() {
             <div className="flex-1">
               <p className="text-sm font-medium mb-2">Sua logo aparecerá no topo do sistema e nos documentos (receitas, pedidos).</p>
               <p className="text-xs text-muted mb-4">Recomendado: PNG ou SVG com fundo transparente (300x300px).</p>
-              <button className="btn btn-secondary btn-sm" onClick={simulateUpload}>
-                Alterar Logo
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                ref={fileInputRef} 
+                onChange={handleFileUpload} 
+              />
+              <button 
+                className="btn btn-secondary btn-sm" 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingLogo}
+              >
+                {uploadingLogo ? "Enviando..." : "Alterar Logo"}
               </button>
             </div>
           </div>

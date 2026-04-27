@@ -11,10 +11,12 @@ export default function ProfileDropdown({
   userInitials,
   userName,
   role,
+  avatarUrl,
 }: {
   userInitials: string;
   userName: string;
   role: string;
+  avatarUrl?: string | null;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -47,8 +49,12 @@ export default function ProfileDropdown({
         onClick={() => setIsOpen(!isOpen)}
         className="profile-dropdown-trigger"
       >
-        <div className="profile-avatar">
-          {userInitials || "A"}
+        <div className="profile-avatar overflow-hidden">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={userName} className="w-full h-full object-cover" />
+          ) : (
+            userInitials || "A"
+          )}
         </div>
         <span
           style={{
