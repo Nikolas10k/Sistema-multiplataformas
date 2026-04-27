@@ -50,6 +50,7 @@ export default function ConfiguracoesPage() {
         await updateTenantLogo(logoUrl);
       }
       alert("Configurações salvas com sucesso!");
+      window.location.reload(); // Recarrega a página para atualizar a sidebar e o topo imediatamente
     } catch (err) {
       alert("Erro ao salvar.");
     } finally {
