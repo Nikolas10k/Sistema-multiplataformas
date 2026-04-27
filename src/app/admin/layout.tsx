@@ -217,18 +217,16 @@ export default function AdminLayout({
     <div className="admin-layout">
       {/* ======================== SIDEBAR ======================== */}
       <aside className={`sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
-        <div className="sidebar-header" style={{ height: 'auto', minHeight: '90px', padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+        <div className="sidebar-header" style={{ height: 'auto', minHeight: '100px', borderBottom: '1px solid var(--border)', padding: '1rem 0.5rem' }}>
           {context?.tenantLogo ? (
-            <div className={`flex flex-col items-center w-full gap-2 ${!isSidebarOpen ? 'px-1' : ''}`}>
-              <div className="w-full flex-center" style={{ height: isSidebarOpen ? '50px' : '32px' }}>
-                <img src={context.tenantLogo} alt="Logo" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
-              </div>
+            <div className="tenant-logo-container">
+              <img src={context.tenantLogo} alt="Logo" className="tenant-logo" />
               {isSidebarOpen && (
-                <span className="sidebar-brand-name" style={{ fontSize: '0.9rem', opacity: 0.8, textAlign: 'center' }}>{context?.tenantName}</span>
+                <span className="sidebar-brand-name" style={{ marginTop: '0.5rem' }}>{context?.tenantName}</span>
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-3 w-full">
+            <div className="flex items-center gap-3 px-4 w-full">
               <div className="sidebar-logo-icon">
                 <Layers size={18} color="white" />
               </div>

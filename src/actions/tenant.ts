@@ -4,76 +4,54 @@ import { prisma } from "@/lib/prisma";
 import { getMyTenantContext } from "./features";
 import { revalidatePath } from "next/cache";
 
-export async function updateTenantLogo(logoUrl: string) {
-  const context = await getMyTenantContext();
-  if (!context?.tenantId) throw new Error("Não autorizado");
-
-  await (prisma.tenant as any).update({
-    where: { id: context.tenantId },
-    data: { logoUrl }
-  });
-
-  revalidatePath("/", "layout");
-  return { success: true };
-}
-
-export async function updateTenantSettings(data: { 
-  name: string, 
-  domain: string,
+export async function saveTenantSettings(data: {
+  // Dados do Tenant
+  name?: string,
   email?: string,
   phone?: string,
-  address?: string
+  document?: string,
+  address?: string,
+  logoUrl?: string,
+  // Dados do Config
+  primaryColor?: string,
+  secondaryColor?: string,
+  companyName?: string
 }) {
   const context = await getMyTenantContext();
   if (!context?.tenantId) throw new Error("Não autorizado");
 
+  // 1. Atualizar o Tenant principal
   await (prisma.tenant as any).update({
     where: { id: context.tenantId },
-    data: { 
+    data: {
       name: data.name,
-      domain: data.domain,
       email: data.email,
       phone: data.phone,
-      address: data.address
+      document: data.document,
+      address: data.address,
+      logoUrl: data.logoUrl
     }
   });
 
-  revalidatePath("/", "layout");
-  return { success: true };
-}
-
-export async function updateTenantBranding(data: { 
-  logoUrl?: string, 
-  primaryColor?: string,
-  secondaryColor?: string
-}) {
-  const context = await getMyTenantContext();
-  if (!context?.tenantId) throw new Error("Não autorizado");
-
-  // Update main Tenant logo
-  if (data.logoUrl) {
-    await (prisma.tenant as any).update({
-      where: { id: context.tenantId },
-      data: { logoUrl: data.logoUrl }
-    });
-  }
-
-  // Update or create TenantConfig
+  // 2. Atualizar ou criar o TenantConfig
   await (prisma.tenantConfig as any).upsert({
     where: { tenantId: context.tenantId },
     update: {
       logoUrl: data.logoUrl,
       primaryColor: data.primaryColor,
-      secondaryColor: data.secondaryColor
+      secondaryColor: data.secondaryColor,
+      companyName: data.companyName || data.name
     },
     create: {
       tenantId: context.tenantId,
       logoUrl: data.logoUrl,
       primaryColor: data.primaryColor,
-      secondaryColor: data.secondaryColor
+      secondaryColor: data.secondaryColor,
+      companyName: data.companyName || data.name
     }
   });
 
   revalidatePath("/", "layout");
+  revalidatePath("/admin/settings");
   return { success: true };
 }

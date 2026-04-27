@@ -5,7 +5,7 @@ import { User, Shield, CreditCard, Check, Zap, Star, Crown, X } from "lucide-rea
 import { useRouter, useSearchParams } from "next/navigation";
 import { updateUser } from "@/actions/admin-users"; 
 import { getMyTenantContext, updateTenantProfile } from "@/actions/features";
-import { updateTenantLogo, updateTenantBranding } from "@/actions/tenant";
+import { saveTenantSettings } from "@/actions/tenant";
 import { uploadProductImage } from "@/actions/upload";
 import { useRef } from "react";
 
@@ -46,6 +46,7 @@ function SettingsContent() {
 
     getMyTenantContext().then(ctx => {
       if (ctx) {
+        setName(ctx.tenantName || ""); // Importante para salvar o nome se não alterado
         setTenantDoc(ctx.config.document || "");
         setTenantPhone(ctx.config.phone || "");
         setTenantEmail(ctx.config.email || "");
@@ -125,26 +126,19 @@ function SettingsContent() {
         throw new Error(res.message || "Erro ao atualizar dados do usuário");
       }
 
-      // Update tenant profile data
-      const profileRes = await updateTenantProfile({
+      // Update tenant data and branding in ONE call
+      const tenantRes = await saveTenantSettings({
+        name, // Nome da empresa
         document: tenantDoc,
         phone: tenantPhone,
         email: tenantEmail,
         address: tenantAddress,
-        logoUrl
-      });
-
-      if (!profileRes.success) {
-        throw new Error(profileRes.message || "Erro ao atualizar dados da empresa");
-      }
-      
-      const brandingRes = await updateTenantBranding({
         logoUrl,
         primaryColor
       });
 
-      if (!brandingRes.success) {
-        throw new Error("Erro ao atualizar identidade visual");
+      if (!tenantRes.success) {
+        throw new Error("Erro ao atualizar dados da empresa e identidade visual");
       }
       
       alert("Alterações salvas com sucesso!");
