@@ -1,0 +1,104 @@
+.calendar-grid {
+  display: grid;
+  grid-template-columns: 80px repeat(7, 1fr);
+  background-color: var(--border);
+  gap: 1px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.calendar-header {
+  background-color: var(--bg-surface);
+  padding: 12px 8px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.day-label {
+  font-size: 0.8rem;
+  color: var(--text-primary);
+}
+
+.time-slot {
+  background-color: var(--bg-surface);
+  min-height: 100px;
+  position: relative;
+}
+
+.label-cell {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 8px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background-color: var(--bg-muted);
+}
+
+.cell {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.cell:hover {
+  background-color: var(--bg-muted);
+}
+
+.drag-over {
+  background-color: rgba(var(--accent-rgb), 0.1) !important;
+}
+
+.session-card {
+  margin: 4px;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-left: 4px solid transparent;
+  transition: transform 0.1s;
+}
+
+.session-card:active {
+  transform: scale(0.98);
+}
+
+.status-confirmed {
+  background-color: var(--success-bg);
+  color: var(--success);
+  border-left-color: var(--success);
+}
+
+.status-pending {
+  background-color: var(--warning-bg);
+  color: var(--warning);
+  border-left-color: var(--warning);
+}
+
+.status-canceled {
+  background-color: var(--danger-bg);
+  color: var(--danger);
+  border-left-color: var(--danger);
+}
+
+.session-card strong {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-card .procedure {
+  opacity: 0.8;
+  font-size: 0.7rem;
+}
+
+.session-card .status {
+  font-weight: bold;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  margin-top: 4px;
+}

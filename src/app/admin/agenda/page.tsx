@@ -1,7 +1,8 @@
-import React from 'react';
+"use client";
+
+import React, { useState, useEffect } from 'react';
 import { DragDropContext, DropResult } from 'react-beautiful-dnd';
 import { Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight, Activity, CheckCircle2, User } from 'lucide-react';
-import { useState, useEffect } from 'react';
 import { getMyTenantContext } from '@/actions/features';
 import { getTerm } from '@/lib/dictionary';
 import { getPatients } from '@/actions/clinical';
