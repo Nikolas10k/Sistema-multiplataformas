@@ -36,6 +36,13 @@ function SettingsContent() {
     const cookies = document.cookie.split(';');
     const idCookie = cookies.find(c => c.trim().startsWith('user_id='));
     if (idCookie) setUserId(idCookie.split('=')[1]);
+    
+    const nameCookie = cookies.find(c => c.trim().startsWith('user_name='));
+    if (nameCookie) setName(decodeURIComponent(nameCookie.split('=')[1]));
+    
+    // Tentativa de pegar o login/username se estiver no cookie
+    const userCookie = cookies.find(c => c.trim().startsWith('user_login='));
+    if (userCookie) setUsername(decodeURIComponent(userCookie.split('=')[1]));
 
     getMyTenantContext().then(ctx => {
       if (ctx) {
