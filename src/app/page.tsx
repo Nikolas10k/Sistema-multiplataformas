@@ -136,7 +136,7 @@ export default function LoginPage() {
               <div className="portal-divider">
                 <span>OU ACESSE OUTROS SISTEMAS</span>
               </div>
-              <a href="http://147.93.109.11:3001" className="btn-portal-condominio" target="_blank" rel="noopener noreferrer">
+              <a href="http://147.93.109.11" className="btn-portal-condominio" target="_blank" rel="noopener noreferrer">
                 <div className="portal-icon">
                   <Sparkles size={16} />
                 </div>
