@@ -72,16 +72,54 @@ export async function getPatientById(id: string) {
       clinicalFiles: {
         orderBy: { createdAt: 'desc' },
         take: 1
+      },
+      evolutions: {
+        orderBy: { evolutionDate: 'desc' },
+        take: 50
       }
     }
   });
 }
 
-export async function createClinicalFile(patientId: string, data: { diagnosis?: string, complaint?: string }) {
+export async function upsertClinicalFile(patientId: string, data: { 
+  complaint?: string, 
+  diagnosis?: string, 
+  anamnesis?: string, 
+  treatmentPlan?: string,
+  history?: string 
+}) {
   const tenantId = await getTenant();
   if (!tenantId) throw new Error("Tenant não identificado");
 
-  const file = await prisma.clinicalFile.create({
+  const existing = await prisma.clinicalFile.findFirst({
+    where: { patientId, tenantId, active: true }
+  });
+
+  if (existing) {
+    const file = await prisma.clinicalFile.update({
+      where: { id: existing.id },
+      data
+    });
+    revalidatePath(`/admin/fisioterapia/prontuario/${patientId}`);
+    return { success: true, file };
+  } else {
+    const file = await prisma.clinicalFile.create({
+      data: {
+        ...data,
+        patientId,
+        tenantId
+      }
+    });
+    revalidatePath(`/admin/fisioterapia/prontuario/${patientId}`);
+    return { success: true, file };
+  }
+}
+
+export async function createEvolution(patientId: string, data: { notes: string, status?: string }) {
+  const tenantId = await getTenant();
+  if (!tenantId) throw new Error("Tenant não identificado");
+
+  const evolution = await prisma.clinicalEvolution.create({
     data: {
       ...data,
       patientId,
@@ -89,8 +127,8 @@ export async function createClinicalFile(patientId: string, data: { diagnosis?: 
     }
   });
 
-  revalidatePath("/admin/fisioterapia/prontuario");
-  return { success: true, file };
+  revalidatePath(`/admin/fisioterapia/prontuario/${patientId}`);
+  return { success: true, evolution };
 }
 
 export async function getClinicalRecords() {

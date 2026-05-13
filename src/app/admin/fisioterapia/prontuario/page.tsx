@@ -12,7 +12,7 @@ import {
   Calendar
 } from "lucide-react";
 import { getMyTenantContext } from "@/actions/features";
-import { getClinicalRecords, createClinicalFile } from "@/actions/clinical";
+import { getClinicalRecords, upsertClinicalFile } from "@/actions/clinical";
 import { getPatients } from "@/actions/clinical";
 import Link from "next/link";
 
@@ -40,7 +40,7 @@ export default function ProntuarioListPage() {
 
   const handleCreate = async () => {
     if (!selectedPatientId) return;
-    const res = await createClinicalFile(selectedPatientId, { diagnosis });
+    const res = await upsertClinicalFile(selectedPatientId, { diagnosis });
     if (res.success) {
       alert("Ficha criada com sucesso!");
       setIsModalOpen(false);

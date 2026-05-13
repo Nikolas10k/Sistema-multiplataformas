@@ -167,13 +167,15 @@ export default function PatientsPage() {
             <p className="text-h2">{patients.filter(p => p.status === 'ACTIVE').length}</p>
           </div>
         </div>
-        <div className="card-flat border-left-warning">
-          <p className="text-xs font-bold text-muted uppercase tracking-widest mb-1">Com Prontuário</p>
-          <div className="flex items-center gap-2">
-            <FileText size={16} className="text-warning" />
-            <p className="text-h2">{patients.length} <span className="text-xs opacity-50">/ {patients.length}</span></p>
+        {niche === 'PHYSIOTHERAPY' && (
+          <div className="card-flat border-left-warning">
+            <p className="text-xs font-bold text-muted uppercase tracking-widest mb-1">Com Prontuário</p>
+            <div className="flex items-center gap-2">
+              <FileText size={16} className="text-warning" />
+              <p className="text-h2">{patients.length} <span className="text-xs opacity-50">/ {patients.length}</span></p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="surface p-4 mb-6 flex items-center gap-4">
@@ -221,9 +223,16 @@ export default function PatientsPage() {
                   </td>
                   <td className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Link href={`/admin/fisioterapia/prontuario/${patient.id}`} className="btn btn-secondary btn-sm">
-                        Prontuário
-                      </Link>
+                      {niche === 'PHYSIOTHERAPY' && (
+                        <Link href={`/admin/fisioterapia/prontuario/${patient.id}`} className="btn btn-secondary btn-sm">
+                          {getTerm("medical_records", niche)}
+                        </Link>
+                      )}
+                      {(niche === 'RETAIL' || niche === 'GENERAL') && (
+                        <Link href={`/admin/vendas?patient=${patient.name}`} className="btn btn-secondary btn-sm">
+                          {getTerm("medical_records", niche)}
+                        </Link>
+                      )}
                       <button className="btn-icon text-accent hover:bg-accent/10" onClick={() => openEdit(patient)}>
                         <Settings2 size={18} />
                       </button>

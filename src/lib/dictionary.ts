@@ -10,6 +10,10 @@ const dictionaries: Record<Niche, Record<string, string>> = {
     'product': 'Produto/Prato',
     'stock': 'Estoque de Insumos',
     'niche_name': 'Restaurante e Gastronomia',
+    'attendance_particular': 'Venda Comum',
+    'attendance_convenio': 'Corporativo/Evento',
+    'medical_records': 'Histórico de Consumo',
+    'select_patient': 'Selecionar Cliente',
   },
   PHYSIOTHERAPY: {
     'customer': 'Paciente',
@@ -20,6 +24,10 @@ const dictionaries: Record<Niche, Record<string, string>> = {
     'product': 'Serviço/Pacote',
     'stock': 'Materiais Médicos',
     'niche_name': 'Fisioterapia e Reabilitação',
+    'attendance_particular': 'Particular',
+    'attendance_convenio': 'Convênio',
+    'medical_records': 'Prontuário',
+    'select_patient': 'Selecionar Paciente',
   },
   RETAIL: {
     'customer': 'Cliente',
@@ -30,6 +38,10 @@ const dictionaries: Record<Niche, Record<string, string>> = {
     'product': 'Mercadoria',
     'stock': 'Estoque de Venda',
     'niche_name': 'Varejo e Comércio',
+    'attendance_particular': 'Venda Direta',
+    'attendance_convenio': 'Faturado / PJ',
+    'medical_records': 'Histórico',
+    'select_patient': 'Selecionar Cliente',
   },
   VETERINARY: {
     'customer': 'Tutor',
@@ -45,6 +57,10 @@ const dictionaries: Record<Niche, Record<string, string>> = {
     'exam': 'Exame',
     'procedure': 'Procedimento',
     'niche_name': 'Veterinária e Petshop',
+    'attendance_particular': 'Particular',
+    'attendance_convenio': 'Convênio / Plano',
+    'medical_records': 'Prontuário',
+    'select_patient': 'Selecionar Animal',
   },
   GENERAL: {
     'customer': 'Cliente',
@@ -55,6 +71,10 @@ const dictionaries: Record<Niche, Record<string, string>> = {
     'product': 'Item',
     'stock': 'Almoxarifado',
     'niche_name': 'Geral',
+    'attendance_particular': 'Particular',
+    'attendance_convenio': 'Outros',
+    'medical_records': 'Registros',
+    'select_patient': 'Selecionar Cliente',
   }
 };
 

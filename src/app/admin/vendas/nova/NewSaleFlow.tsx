@@ -10,13 +10,13 @@ import {
 import { getPatients } from "@/actions/clinical";
 import { getServices, createSale } from "@/actions/sales";
 import { getProductsAndCategories } from "@/actions/products";
-
-const STEPS = ["Paciente", "Itens", "Pagamento"];
+import { getMyTenantContext } from "@/actions/features";
+import { getTerm } from "@/lib/dictionary";
 
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace(".", ",")}`;
 
 interface CartItem {
-  item: any; // Can be Service or Product
+  item: any; 
   type: 'SERVICE' | 'PRODUCT';
   quantity: number;
   unitPrice: number;
@@ -25,8 +25,14 @@ interface CartItem {
 
 export default function NewSaleFlow() {
   const router = useRouter();
+  const [context, setContext] = useState<any>(null);
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+
+  const niche = context?.niche || 'GENERAL';
+  const labelPatient = getTerm("customer", niche);
+
+  const STEPS = [getTerm("customer", niche), niche === 'RETAIL' ? "Produtos" : "Itens", "Pagamento"];
 
   // Data
   const [patients,  setPatients]  = useState<any[]>([]);
@@ -49,8 +55,9 @@ export default function NewSaleFlow() {
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
-    Promise.all([getPatients(), getServices(), getProductsAndCategories()]).then(([p, s, prodData]) => {
+    Promise.all([getPatients(), getServices(), getProductsAndCategories(), getMyTenantContext()]).then(([p, s, prodData, ctx]) => {
       setPatients(p);
+      setContext(ctx);
       
       const servicesFormatted = s.filter((sv: any) => sv.active).map((sv: any) => ({
         ...sv,
@@ -149,7 +156,7 @@ export default function NewSaleFlow() {
           <h1 className="text-h1 flex items-center gap-3">
             <Receipt size={28} className="text-accent" /> Nova Venda
           </h1>
-          <p className="text-muted">Crie uma venda e gere a cobrança para o paciente.</p>
+          <p className="text-muted">Crie uma venda e gere a cobrança para o {labelPatient.toLowerCase()}.</p>
         </div>
         <button className="btn btn-secondary" onClick={() => router.back()}>
           <ChevronLeft size={18} /> Voltar
@@ -185,20 +192,20 @@ export default function NewSaleFlow() {
       {step === 0 && (
         <div className="card p-6 space-y-6">
           <div>
-            <h2 className="text-h3 mb-1 flex items-center gap-2"><User size={20} className="text-accent" /> Selecionar Paciente</h2>
-            <p className="text-sm text-muted">Busque e selecione o paciente para esta venda.</p>
+            <h2 className="text-h3 mb-1 flex items-center gap-2"><User size={20} className="text-accent" /> {getTerm("select_patient", niche)}</h2>
+            <p className="text-sm text-muted">Busque e selecione o {labelPatient.toLowerCase()} para esta venda.</p>
           </div>
 
           <div className="input-wrapper">
             <Search size={14} className="input-icon" />
-            <input className="input-field with-icon" placeholder="Nome, telefone ou CPF..." value={patientSearch} onChange={e => setPatientSearch(e.target.value)} />
+            <input className="input-field with-icon" placeholder={`Nome, telefone ou ${niche === 'PHYSIOTHERAPY' ? 'CPF' : 'Documento'}...`} value={patientSearch} onChange={e => setPatientSearch(e.target.value)} />
           </div>
 
           <div className="flex flex-col gap-2" style={{ maxHeight: 300, overflowY: "auto" }}>
             {filteredPatients.length === 0 && (
               <div className="p-8 text-center text-muted">
                 <AlertCircle size={32} className="mx-auto mb-2 opacity-30" />
-                <p>Nenhum paciente encontrado.</p>
+                <p>Nenhum {labelPatient.toLowerCase()} encontrado.</p>
               </div>
             )}
             {filteredPatients.map(p => (
@@ -221,7 +228,7 @@ export default function NewSaleFlow() {
             ))}
           </div>
 
-          {selectedPatient && (
+          {selectedPatient && (niche === 'PHYSIOTHERAPY' || niche === 'VETERINARY') && (
             <div className="input-group">
               <label className="input-label">Tipo de Atendimento</label>
               <div className="flex gap-3">
@@ -232,7 +239,7 @@ export default function NewSaleFlow() {
                       attendanceType === t ? "border-accent bg-accent/5 text-accent" : "border-border hover:border-accent/40"
                     }`}
                   >
-                    {t === "PARTICULAR" ? "🏥 Particular" : "🪪 Convênio"}
+                    {t === "PARTICULAR" ? `🏥 ${getTerm("attendance_particular", niche)}` : `🪪 ${getTerm("attendance_convenio", niche)}`}
                   </button>
                 ))}
               </div>
@@ -241,7 +248,7 @@ export default function NewSaleFlow() {
 
           <div className="flex justify-end">
             <button className="btn btn-primary" disabled={!selectedPatient} onClick={() => setStep(1)}>
-              Próximo — Serviços <ChevronRight size={18} />
+              Próximo — {niche === 'RETAIL' ? 'Produtos' : 'Itens'} <ChevronRight size={18} />
             </button>
           </div>
         </div>
@@ -352,10 +359,12 @@ export default function NewSaleFlow() {
             <h2 className="text-h3 flex items-center gap-2"><Receipt size={20} className="text-accent" /> Resumo</h2>
             {selectedPatient && (
               <div className="p-4 rounded-xl bg-bg-muted/50 border border-border">
-                <p className="text-xs text-muted uppercase font-bold mb-1">Paciente</p>
+                <p className="text-xs text-muted uppercase font-bold mb-1">{labelPatient}</p>
                 <p className="font-semibold">{selectedPatient.name}</p>
                 {selectedPatient.phone && <p className="text-xs text-muted">{selectedPatient.phone}</p>}
-                <span className="badge badge-neutral text-xs mt-1">{attendanceType}</span>
+                {(niche === 'PHYSIOTHERAPY' || niche === 'VETERINARY') && (
+                  <span className="badge badge-neutral text-xs mt-1">{attendanceType}</span>
+                )}
               </div>
             )}
             <div className="flex flex-col gap-2">
@@ -433,7 +442,7 @@ export default function NewSaleFlow() {
 
             <div className="input-group">
               <label className="input-label">Observações</label>
-              <textarea className="input-field" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Informações adicionais para o paciente..." />
+              <textarea className="input-field" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder={`Informações adicionais para o ${labelPatient.toLowerCase()}...`} />
             </div>
 
             <div className="flex gap-3">

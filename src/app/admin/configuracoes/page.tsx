@@ -12,7 +12,7 @@ import {
   Image as ImageIcon
 } from "lucide-react";
 import { getMyTenantContext } from "@/actions/features";
-import { updateTenantLogo, updateTenantSettings } from "@/actions/tenant";
+import { saveTenantSettings } from "@/actions/tenant";
 import { uploadProductImage } from "@/actions/upload";
 import { useRef } from "react";
 
@@ -45,12 +45,15 @@ export default function ConfiguracoesPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await updateTenantSettings({ name, domain, email, phone, address });
-      if (logoUrl !== context.tenantLogo) {
-        await updateTenantLogo(logoUrl);
-      }
+      await saveTenantSettings({ 
+        name, 
+        email, 
+        phone, 
+        address,
+        logoUrl
+      });
       alert("Configurações salvas com sucesso!");
-      window.location.reload(); // Recarrega a página para atualizar a sidebar e o topo imediatamente
+      window.location.reload(); 
     } catch (err) {
       alert("Erro ao salvar.");
     } finally {

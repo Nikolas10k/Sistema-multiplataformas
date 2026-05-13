@@ -7,6 +7,8 @@ import {
   AlertCircle, CreditCard, Banknote, QrCode, BadgeCheck, Printer
 } from "lucide-react";
 import { getSales, getSalesSummary, registerPayment, cancelSale } from "@/actions/sales";
+import { getMyTenantContext } from "@/actions/features";
+import { getTerm } from "@/lib/dictionary";
 import Link from "next/link";
 
 const STATUS_MAP: Record<string, { label: string; badge: string }> = {
@@ -27,9 +29,12 @@ const PAYMENT_MAP: Record<string, { label: string; icon: any }> = {
 const fmt = (v: number) => `R$ ${v.toFixed(2).replace(".", ",")}`;
 
 export default function SalesManager() {
+  const [context, setContext] = useState<any>(null);
   const [sales, setSales] = useState<any[]>([]);
   const [summary, setSummary] = useState({ totalValue: 0, paidValue: 0, pendingValue: 0, monthCount: 0 });
   const [loading, setLoading] = useState(true);
+
+  const niche = context?.niche || 'GENERAL';
 
   // Filters
   const [fPatient,  setFPatient]  = useState("");
@@ -44,12 +49,14 @@ export default function SalesManager() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [saleList, sumData] = await Promise.all([
+    const [saleList, sumData, ctx] = await Promise.all([
       getSales({ patientName: fPatient, status: fStatus, paymentMethod: fPayment, fromDate: fFromDate, toDate: fToDate }),
       getSalesSummary(),
+      getMyTenantContext()
     ]);
     setSales(saleList);
     setSummary(sumData);
+    setContext(ctx);
     setLoading(false);
   }, [fPatient, fStatus, fPayment, fFromDate, fToDate]);
 
@@ -118,11 +125,11 @@ export default function SalesManager() {
             <Receipt size={32} className="text-accent" />
             Vendas e Cobranças
           </h1>
-          <p className="text-muted">Gestão financeira de serviços e pacotes de atendimento.</p>
+          <p className="text-muted">Gestão financeira de {niche === 'RETAIL' ? 'mercadorias e vendas' : 'serviços e pacotes de atendimento'}.</p>
         </div>
         <div className="flex gap-3">
-          <Link href="/admin/vendas/servicos" className="btn btn-secondary">
-            <ShoppingBag size={18} /> Catálogo
+          <Link href={niche === 'RETAIL' ? "/admin/produtos" : "/admin/vendas/servicos"} className="btn btn-secondary">
+            <ShoppingBag size={18} /> {niche === 'RETAIL' ? 'Estoque' : 'Catálogo'}
           </Link>
           <Link href="/admin/vendas/nova" className="btn btn-primary">
             <Plus size={18} /> Nova Venda
@@ -156,10 +163,10 @@ export default function SalesManager() {
       <div className="card mb-6">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="input-group" style={{ minWidth: 200, flex: 1 }}>
-            <label className="input-label">Paciente</label>
+            <label className="input-label">{getTerm("customer", niche)}</label>
             <div className="input-wrapper">
               <Search size={14} className="input-icon" />
-              <input className="input-field input-sm with-icon" placeholder="Buscar paciente..." value={fPatient} onChange={e => setFPatient(e.target.value)} />
+              <input className="input-field input-sm with-icon" placeholder={`Buscar ${getTerm("customer", niche).toLowerCase()}...`} value={fPatient} onChange={e => setFPatient(e.target.value)} />
             </div>
           </div>
           <div className="input-group" style={{ minWidth: 140 }}>
@@ -207,7 +214,7 @@ export default function SalesManager() {
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Paciente</th>
+                  <th>{getTerm("customer", niche)}</th>
                   <th>Itens</th>
                   <th>Total</th>
                   <th>Pago</th>

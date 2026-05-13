@@ -61,7 +61,7 @@ cat > .env << 'ENVEOF'
 ENVEOF
 
 echo "==> [3/6] Atualizando código via git..."
-git pull origin main || echo "Sem git remoto, pulando pull..."
+git pull origin master || echo "Sem git remoto, pulando pull..."
 
 echo "==> [4/6] Parando containers..."
 docker compose down

@@ -17,16 +17,22 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
-import { getPatientById } from "@/actions/clinical";
+import { getPatientById, upsertClinicalFile, createEvolution } from "@/actions/clinical";
 
 export default function ClinicalFilePage() {
   const { id } = useParams();
   const [activeTab, setActiveTab] = useState("anamnese");
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [patient, setPatient] = useState<any>(null);
+  const [evolutions, setEvolutions] = useState<any[]>([]);
+  
+  // Form State
   const [evolutionText, setEvolutionText] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
   const [complaint, setComplaint] = useState("");
+  const [medications, setMedications] = useState("");
+  const [goals, setGoals] = useState("");
 
   useEffect(() => {
     async function fetchPatient() {
@@ -38,6 +44,20 @@ export default function ClinicalFilePage() {
           age: data.birthDate ? Math.floor((new Date().getTime() - new Date(data.birthDate).getTime()) / 31557600000) : "N/A",
           status: "Em tratamento"
         });
+        
+        // Load latest clinical file data
+        if (data.clinicalFiles && data.clinicalFiles.length > 0) {
+          const file = data.clinicalFiles[0];
+          setComplaint(file.complaint || "");
+          setDiagnosis(file.diagnosis || "");
+          setMedications(file.anamnesis || ""); // Using anamnesis for medications as planned
+          setGoals(file.treatmentPlan || "");
+        }
+        
+        // Load evolutions
+        if (data.evolutions) {
+          setEvolutions(data.evolutions);
+        }
       } else {
         setPatient({
           id,
@@ -53,6 +73,36 @@ export default function ClinicalFilePage() {
     fetchPatient();
   }, [id]);
 
+  const handleSaveAnamnesis = async () => {
+    if (!id || typeof id !== 'string') return;
+    setSaving(true);
+    const res = await upsertClinicalFile(id, {
+      complaint,
+      diagnosis,
+      anamnesis: medications,
+      treatmentPlan: goals
+    });
+    setSaving(false);
+    if (res.success) {
+      alert("Ficha de Anamnese salva com sucesso!");
+    }
+  };
+
+  const handleAddEvolution = async () => {
+    if (!id || typeof id !== 'string' || !evolutionText) return;
+    setSaving(true);
+    const res = await createEvolution(id, { 
+      notes: evolutionText,
+      status: evolutionText.includes("[Melhora]") ? "IMPROVED" : evolutionText.includes("[Estável]") ? "STABLE" : undefined
+    });
+    setSaving(false);
+    if (res.success) {
+      setEvolutions([res.evolution, ...evolutions]);
+      setEvolutionText("");
+      alert("Evolução registrada com sucesso!");
+    }
+  };
+
   if (loading) return <div className="p-8 text-center text-muted">Carregando prontuário...</div>;
 
   return (
@@ -66,12 +116,12 @@ export default function ClinicalFilePage() {
           <div>
             <h1 className="text-h2">{patient.name}</h1>
             <p className="text-sm text-muted">
-              {patient.age} anos • <span className="font-medium text-accent">{patient.diagnosis}</span>
+              {patient.age} anos • <span className="font-medium text-accent">{diagnosis || "Sem diagnóstico"}</span>
             </p>
           </div>
         </div>
         <div className="flex gap-2">
-          <span className="badge badge-primary">ID: {patient.id}</span>
+          <span className="badge badge-primary">ID: {patient.id.substring(0, 8)}</span>
           <span className="badge badge-success">{patient.status}</span>
         </div>
       </div>
@@ -104,7 +154,8 @@ export default function ClinicalFilePage() {
             <div className="divider my-4"></div>
             <div className="p-3">
               <p className="text-xs text-label mb-2">Informações de Contato</p>
-              <p className="text-sm">{patient.phone}</p>
+              <p className="text-sm font-medium">{patient.phone || "Não informado"}</p>
+              <p className="text-xs text-muted mt-1">{patient.email || ""}</p>
             </div>
           </div>
         </div>
@@ -119,14 +170,12 @@ export default function ClinicalFilePage() {
                   Ficha de Anamnese
                 </h3>
                 <button 
-                  className="btn btn-secondary btn-sm"
-                  onClick={async () => {
-                    // Logic to save anamnesis
-                    alert("Ficha de Anamnese salva com sucesso!");
-                  }}
+                  className="btn btn-primary btn-sm"
+                  onClick={handleSaveAnamnesis}
+                  disabled={saving}
                 >
                   <Save size={16} />
-                  Salvar Alterações
+                  {saving ? "Salvando..." : "Salvar Alterações"}
                 </button>
               </div>
               
@@ -148,19 +197,32 @@ export default function ClinicalFilePage() {
                     <textarea 
                       className="input-field" 
                       rows={4}
+                      placeholder="Diagnóstico médico ou fisioterapêutico..."
                       value={diagnosis}
                       onChange={(e) => setDiagnosis(e.target.value)}
                     ></textarea>
                   </div>
                   <div className="input-group">
                     <label className="input-label">Medicamentos em Uso</label>
-                    <textarea className="input-field" rows={4}></textarea>
+                    <textarea 
+                      className="input-field" 
+                      rows={4}
+                      placeholder="Liste os medicamentos que o paciente utiliza..."
+                      value={medications}
+                      onChange={(e) => setMedications(e.target.value)}
+                    ></textarea>
                   </div>
                 </div>
 
                 <div className="input-group">
                   <label className="input-label">Objetivos do Tratamento</label>
-                  <textarea className="input-field" rows={3} defaultValue=""></textarea>
+                  <textarea 
+                    className="input-field" 
+                    rows={3} 
+                    placeholder="Quais são as metas para este paciente?"
+                    value={goals}
+                    onChange={(e) => setGoals(e.target.value)}
+                  ></textarea>
                 </div>
               </div>
             </div>
@@ -189,15 +251,11 @@ export default function ClinicalFilePage() {
                   </div>
                   <button 
                     className="btn btn-primary" 
-                    onClick={async () => {
-                      if (!evolutionText) return;
-                      // Logic to save evolution
-                      alert("Evolução registrada com sucesso!");
-                      setEvolutionText("");
-                    }}
+                    onClick={handleAddEvolution}
+                    disabled={saving || !evolutionText}
                   >
                     <Plus size={16} />
-                    Registrar Atendimento
+                    {saving ? "Registrando..." : "Registrar Atendimento"}
                   </button>
                 </div>
               </div>
@@ -206,9 +264,27 @@ export default function ClinicalFilePage() {
               <div className="flex flex-col gap-4">
                 <h4 className="text-label">Evoluções Anteriores</h4>
                 
-                <div className="p-4 text-center border border-dashed border-border rounded-xl">
-                  <p className="text-muted">Nenhuma evolução registrada ainda.</p>
-                </div>
+                {evolutions.length > 0 ? (
+                  evolutions.map((evo) => (
+                    <div key={evo.id} className="card-flat border-left-accent p-4 animate-fade-in">
+                      <div className="flex-between mb-2">
+                        <span className="text-xs font-bold text-accent flex items-center gap-1">
+                          <Clock size={12} /> {new Date(evo.evolutionDate || evo.createdAt).toLocaleDateString()} às {new Date(evo.evolutionDate || evo.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        {evo.status && (
+                          <span className={`badge ${evo.status === 'IMPROVED' ? 'badge-success' : 'badge-neutral'} text-[10px]`}>
+                            {evo.status === 'IMPROVED' ? 'Melhora' : 'Estável'}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm whitespace-pre-wrap">{evo.notes}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-8 text-center border border-dashed border-border rounded-xl">
+                    <p className="text-muted">Nenhuma evolução registrada ainda.</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -227,9 +303,19 @@ export default function ClinicalFilePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td colSpan={4} className="text-center py-4 text-muted">Nenhum atendimento registrado.</td>
-                    </tr>
+                    {evolutions.map((evo) => (
+                      <tr key={evo.id}>
+                        <td className="text-sm font-medium">{new Date(evo.evolutionDate || evo.createdAt).toLocaleDateString()}</td>
+                        <td className="text-sm">Evolução Clínica</td>
+                        <td className="text-sm text-muted">Profissional Responsável</td>
+                        <td><span className="badge badge-success">Concluído</span></td>
+                      </tr>
+                    ))}
+                    {evolutions.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="text-center py-4 text-muted">Nenhum atendimento registrado.</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
