@@ -131,6 +131,22 @@ export default function LoginPage() {
               <span className="dot"></span>
               <a href="#">Suporte</a>
             </div>
+
+            <div className="condominio-portal animate-fade-in">
+              <div className="portal-divider">
+                <span>OU ACESSE OUTROS SISTEMAS</span>
+              </div>
+              <a href="http://187.127.25.208:3001" className="btn-portal-condominio" target="_blank" rel="noopener noreferrer">
+                <div className="portal-icon">
+                  <Sparkles size={16} />
+                </div>
+                <div className="portal-text">
+                  <span className="portal-label">Portal do Condomínio</span>
+                  <span className="portal-sub">Agente IA Operacional</span>
+                </div>
+                <ArrowRight size={14} className="arrow-hover" />
+              </a>
+            </div>
           </div>
           
           <p className="copyright-text">© 2026 Givance Systems • Todos os direitos reservados</p>
@@ -392,6 +408,85 @@ export default function LoginPage() {
         .form-footer a:hover { opacity: 1; }
 
         .dot { width: 4px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 50%; }
+
+        /* Condominio Portal Style */
+        .condominio-portal {
+          margin-top: 2rem;
+          padding-top: 2rem;
+          border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .portal-divider {
+          text-align: center;
+          margin-bottom: 1.5rem;
+          position: relative;
+        }
+
+        .portal-divider span {
+          font-size: 0.6rem;
+          letter-spacing: 2px;
+          opacity: 0.3;
+          background: #0f0f0f;
+          padding: 0 1rem;
+        }
+
+        .btn-portal-condominio {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          padding: 1rem 1.25rem;
+          border-radius: 1.25rem;
+          text-decoration: none;
+          color: white;
+          transition: all 0.3s ease;
+        }
+
+        .btn-portal-condominio:hover {
+          background: rgba(99, 102, 241, 0.1);
+          border-color: rgba(99, 102, 241, 0.3);
+          transform: translateY(-2px);
+        }
+
+        .portal-icon {
+          width: 32px;
+          height: 32px;
+          background: rgba(99, 102, 241, 0.2);
+          border-radius: 0.75rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--accent);
+        }
+
+        .portal-text {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .portal-label {
+          font-size: 0.875rem;
+          font-weight: 600;
+        }
+
+        .portal-sub {
+          font-size: 0.65rem;
+          opacity: 0.4;
+        }
+
+        .arrow-hover {
+          opacity: 0;
+          transform: translateX(-10px);
+          transition: all 0.3s ease;
+          color: var(--accent);
+        }
+
+        .btn-portal-condominio:hover .arrow-hover {
+          opacity: 1;
+          transform: translateX(0);
+        }
 
         .copyright-text {
           margin-top: 3rem;

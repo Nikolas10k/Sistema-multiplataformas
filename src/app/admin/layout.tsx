@@ -116,13 +116,15 @@ export default function AdminLayout({
       name: getTerm("appointment", niche), 
       icon: CalendarDays, 
       path: "/admin/agenda", 
-      feature: "calendar.enabled" 
+      feature: "calendar.enabled",
+      excludeNiche: ['RETAIL'] // Retail usually doesn't use the agenda
     },
     { 
       name: getTerm("clinical_file", niche), 
       icon: FileText, 
       path: niche === 'PHYSIOTHERAPY' ? "/admin/fisioterapia/prontuario" : "/admin/fichas", 
-      feature: "clinical_files" 
+      feature: "clinical_files",
+      nicheOnly: 'PHYSIOTHERAPY' // Hard niche limit for clinical files
     },
     { 
       name: 'Tutores', 
@@ -166,16 +168,11 @@ export default function AdminLayout({
       feature: "animals.manage",
       nicheOnly: 'VETERINARY'
     },
-    { name: "Painel Geral", icon: LayoutDashboard, path: "/admin" },
-    { name: "Pacientes", icon: Users, path: "/admin/pacientes", nicheOnly: 'PHYSIOTHERAPY' },
     { name: "Vendas e Cobranças", icon: Receipt, path: "/admin/vendas", nicheOnly: 'PHYSIOTHERAPY' },
-    { name: "Sessão", icon: Activity, path: "/admin/agenda", nicheOnly: 'PHYSIOTHERAPY' },
-    { name: "Prontuário Eletrônico", icon: FileText, path: "/admin/fisioterapia/prontuario", nicheOnly: 'PHYSIOTHERAPY' },
     { name: "Serviço/Pacotes", icon: ClipboardList, path: "/admin/vendas/servicos", nicheOnly: 'PHYSIOTHERAPY' },
     { name: "Materiais Médicos", icon: ShoppingBag, path: "/admin/produtos", nicheOnly: 'PHYSIOTHERAPY' },
     
     // Itens de Restaurante / Varejo
-    { name: "PDV / Vendas", icon: Receipt, path: "/pdv", nicheOnly: 'RESTAURANT' },
     { name: "Cardápio", icon: ClipboardList, path: "/admin/produtos", nicheOnly: 'RESTAURANT' },
     { name: "Estoque", icon: ShoppingBag, path: "/admin/produtos", nicheOnly: 'RETAIL' },
     { name: "Vendas", icon: Receipt, path: "/admin/vendas", nicheOnly: 'RETAIL' },
@@ -190,6 +187,7 @@ export default function AdminLayout({
   const menuItems = allItems.filter(item => {
     if (userRole === 'PLATFORM_ADMIN') return true;
     if (item.nicheOnly && niche !== item.nicheOnly) return false;
+    if (item.excludeNiche && item.excludeNiche.includes(niche)) return false;
     
     const tenantFeatureAllowed = features.includes(item.feature) || !item.feature;
     
@@ -266,6 +264,19 @@ export default function AdminLayout({
             <Settings size={18} className="nav-icon" />
             <span className="nav-text">Configurações</span>
           </Link>
+
+          {/* Link direto para o sistema de condomínio que rodará na porta 3001 */}
+          <a
+            href="http://187.127.25.208:3001"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="nav-link"
+            title={!isSidebarOpen ? "Condomínio Operacional" : undefined}
+            style={{ color: '#2D9A8D' }}
+          >
+            <Building2 size={18} className="nav-icon" />
+            <span className="nav-text">Sistema Condomínio ↗</span>
+          </a>
 
           <button
             className="nav-link logout-link"
