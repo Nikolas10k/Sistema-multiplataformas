@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { exigirContexto } from "@/lib/auth";
 import { formatarDataHora, formatarHora, horasAtras } from "@/lib/tempo";
 import { Avisos } from "@/componentes/ui";
 import { acaoConfirmarInvenzi, acaoRegistrarAcesso, acaoRegistrarSaida } from "../acoes";
@@ -11,23 +12,28 @@ const TIPOS = { VISITANTE: "Visitante", PRESTADOR: "Prestador", ENTREGA: "Entreg
 
 export default async function PaginaAcessos({ searchParams }: { searchParams: Params }) {
   const params = await searchParams;
+  const { condominio, relogio: r } = await exigirContexto();
   const busca = params.busca?.trim();
   const [registros, recepcoes] = await Promise.all([
     db.registroAcesso.findMany({
       where: busca
         ? {
+            condominioId: condominio.id,
             OR: [
               { nome: { contains: busca, mode: "insensitive" } },
               { sala: { contains: busca, mode: "insensitive" } },
               { empresa: { contains: busca, mode: "insensitive" } },
             ],
           }
-        : { entradaEm: { gte: horasAtras(24) } },
+        : { condominioId: condominio.id, entradaEm: { gte: horasAtras(24) } },
       include: { local: true, registradoPor: { select: { nome: true } } },
       orderBy: { entradaEm: "desc" },
       take: 150,
     }),
-    db.local.findMany({ where: { ativo: true, tipo: { in: ["RECEPCAO", "SUBSOLO"] } }, orderBy: { ordem: "asc" } }),
+    db.local.findMany({
+      where: { condominioId: condominio.id, ativo: true, tipo: { in: ["RECEPCAO", "SUBSOLO"] } },
+      orderBy: { ordem: "asc" },
+    }),
   ]);
 
   return (
@@ -36,7 +42,8 @@ export default async function PaginaAcessos({ searchParams }: { searchParams: Pa
         <div>
           <h1>Controle de acesso</h1>
           <div className="subtitulo">
-            Espelho operacional. O cadastro oficial continua no Invenzi: marque quando a pessoa já estiver cadastrada lá.
+            Espelho operacional. O cadastro oficial continua no sistema de controle de acesso do prédio: marque quando a pessoa
+            já estiver cadastrada lá.
           </div>
         </div>
       </div>
@@ -89,7 +96,7 @@ export default async function PaginaAcessos({ searchParams }: { searchParams: Pa
             <input name="observacao" />
           </label>
           <label className="checkbox">
-            <input type="checkbox" name="cadastrado_invenzi" defaultChecked /> Já cadastrado no Invenzi
+            <input type="checkbox" name="cadastrado_invenzi" defaultChecked /> Já cadastrado no sistema de acesso
           </label>
           <div>
             <button type="submit">Registrar entrada</button>
@@ -112,30 +119,30 @@ export default async function PaginaAcessos({ searchParams }: { searchParams: Pa
                 <th>Entrada</th>
                 <th>Nome</th>
                 <th>Destino</th>
-                <th>Invenzi</th>
+                <th>Sistema de acesso</th>
                 <th>Saída</th>
               </tr>
             </thead>
             <tbody>
-              {registros.map((r) => (
-                <tr key={r.id}>
-                  <td className="suave">{formatarDataHora(r.entradaEm)}</td>
+              {registros.map((a) => (
+                <tr key={a.id}>
+                  <td className="suave">{formatarDataHora(r, a.entradaEm)}</td>
                   <td>
-                    {r.nome}
+                    {a.nome}
                     <div className="suave">
-                      {TIPOS[r.tipo]}
-                      {r.documentoFinal && ` · doc. final ${r.documentoFinal}`}
-                      {r.local && ` · ${r.local.nome}`} · {r.registradoPor.nome}
+                      {TIPOS[a.tipo]}
+                      {a.documentoFinal && ` · doc. final ${a.documentoFinal}`}
+                      {a.local && ` · ${a.local.nome}`} · {a.registradoPor.nome}
                     </div>
-                    {r.observacao && <div className="suave">{r.observacao}</div>}
+                    {a.observacao && <div className="suave">{a.observacao}</div>}
                   </td>
-                  <td>{[r.sala && `Sala ${r.sala}`, r.empresa].filter(Boolean).join(" · ") || "—"}</td>
+                  <td>{[a.sala && `Sala ${a.sala}`, a.empresa].filter(Boolean).join(" · ") || "—"}</td>
                   <td>
-                    {r.cadastradoInvenzi ? (
+                    {a.cadastradoInvenzi ? (
                       <span className="selo ok">ok</span>
                     ) : (
                       <form action={acaoConfirmarInvenzi}>
-                        <input type="hidden" name="id" value={r.id} />
+                        <input type="hidden" name="id" value={a.id} />
                         <button className="secundario pequeno" type="submit">
                           Confirmar
                         </button>
@@ -143,11 +150,11 @@ export default async function PaginaAcessos({ searchParams }: { searchParams: Pa
                     )}
                   </td>
                   <td>
-                    {r.saidaEm ? (
-                      <span className="suave">{formatarHora(r.saidaEm)}</span>
+                    {a.saidaEm ? (
+                      <span className="suave">{formatarHora(r, a.saidaEm)}</span>
                     ) : (
                       <form action={acaoRegistrarSaida}>
-                        <input type="hidden" name="id" value={r.id} />
+                        <input type="hidden" name="id" value={a.id} />
                         <button className="pequeno" type="submit">
                           Registrar saída
                         </button>

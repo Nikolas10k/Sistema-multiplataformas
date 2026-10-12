@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { exigirContexto } from "@/lib/auth";
 import { situacaoRondas } from "@/lib/operacao";
 import { formatarDataHora, formatarHora, nomeTurno, plantaoEm } from "@/lib/tempo";
 import { Avisos, type ParamsAviso } from "@/componentes/ui";
@@ -10,11 +11,12 @@ const ROTULO = { OK: ["ok", "Feita"], PENDENTE: ["alerta", "Pendente"], ATRASADA
 
 export default async function PaginaRondas({ searchParams }: { searchParams: ParamsAviso }) {
   const params = await searchParams;
-  const p = plantaoEm();
+  const { condominio, relogio: r } = await exigirContexto();
+  const p = plantaoEm(r);
   const [situacao, recentes] = await Promise.all([
-    situacaoRondas(p),
+    situacaoRondas(condominio.id, r, p),
     db.ronda.findMany({
-      where: { realizadaEm: { gte: p.inicio } },
+      where: { condominioId: condominio.id, realizadaEm: { gte: p.inicio } },
       include: { local: true, porteiro: { select: { nome: true } } },
       orderBy: { realizadaEm: "desc" },
       take: 50,
@@ -27,7 +29,7 @@ export default async function PaginaRondas({ searchParams }: { searchParams: Par
         <div>
           <h1>Rondas</h1>
           <div className="subtitulo">
-            Plantão {nomeTurno(p.turno)} · início {formatarDataHora(p.inicio)}. Pelo WhatsApp basta mandar, por exemplo, &quot;ronda
+            Plantão {nomeTurno(r, p.turno)} · início {formatarDataHora(r, p.inicio)}. Pelo WhatsApp basta mandar, por exemplo, &quot;ronda
             no 8º andar ok&quot;.
           </div>
         </div>
@@ -85,7 +87,7 @@ export default async function PaginaRondas({ searchParams }: { searchParams: Par
                     <span className={`selo ${ROTULO[s.situacao][0]}`}>{ROTULO[s.situacao][1]}</span>
                   </td>
                   <td>{s.quantidade}</td>
-                  <td className="suave">{s.ultima ? formatarHora(s.ultima) : "—"}</td>
+                  <td className="suave">{s.ultima ? formatarHora(r, s.ultima) : "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -96,15 +98,15 @@ export default async function PaginaRondas({ searchParams }: { searchParams: Par
           {recentes.length === 0 && <p className="suave">Nenhuma ronda registrada neste plantão.</p>}
           <table>
             <tbody>
-              {recentes.map((r) => (
-                <tr key={r.id}>
-                  <td className="suave">{formatarHora(r.realizadaEm)}</td>
+              {recentes.map((x) => (
+                <tr key={x.id}>
+                  <td className="suave">{formatarHora(r, x.realizadaEm)}</td>
                   <td>
-                    {r.local.nome}
-                    {r.observacao && <div className="suave">{r.observacao}</div>}
+                    {x.local.nome}
+                    {x.observacao && <div className="suave">{x.observacao}</div>}
                   </td>
-                  <td>{r.porteiro.nome}</td>
-                  <td>{r.comAlteracao ? <span className="selo alerta">alteração</span> : <span className="selo ok">ok</span>}</td>
+                  <td>{x.porteiro.nome}</td>
+                  <td>{x.comAlteracao ? <span className="selo alerta">alteração</span> : <span className="selo ok">ok</span>}</td>
                 </tr>
               ))}
             </tbody>

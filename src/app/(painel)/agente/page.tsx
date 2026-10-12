@@ -1,4 +1,4 @@
-import { exigirUsuario } from "@/lib/auth";
+import { exigirContexto } from "@/lib/auth";
 import { historicoVisivel } from "@/lib/agente/executar";
 import { nomeTurno, plantaoEm } from "@/lib/tempo";
 import { Chat } from "./Chat";
@@ -6,8 +6,8 @@ import { Chat } from "./Chat";
 export const dynamic = "force-dynamic";
 
 export default async function PaginaAgente() {
-  const usuario = await exigirUsuario();
-  const historico = await historicoVisivel(usuario, "WEB");
+  const ctx = await exigirContexto();
+  const historico = await historicoVisivel(ctx, "WEB");
   return (
     <div>
       <div className="cabecalho">
@@ -15,7 +15,7 @@ export default async function PaginaAgente() {
           <h1>Agente operacional</h1>
           <div className="subtitulo">
             Converse em linguagem natural: registre rondas, ocorrências, visitantes e pedidos de apoio, ou peça a passagem de
-            turno. A conversa recomeça a cada plantão ({nomeTurno(plantaoEm().turno)}).
+            turno. A conversa recomeça a cada plantão ({nomeTurno(ctx.relogio, plantaoEm(ctx.relogio).turno)}).
           </div>
         </div>
       </div>

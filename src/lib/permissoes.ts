@@ -2,7 +2,7 @@ import type { Papel, Setor } from "@prisma/client";
 
 export const NOME_PAPEL: Record<Papel, string> = {
   TI_ADMIN: "TI / Administrador do sistema",
-  SINDICA: "Síndica",
+  SINDICA: "Síndico(a)",
   ADMINISTRACAO: "Administração",
   FINANCEIRO: "Financeiro",
   SUPERVISOR: "Supervisor",
@@ -15,7 +15,7 @@ export const NOME_SETOR: Record<Setor, string> = {
   ADMINISTRACAO: "Administração",
   FINANCEIRO: "Financeiro",
   SUPERVISOR: "Supervisor",
-  SINDICA: "Síndica",
+  SINDICA: "Síndico(a)",
   PORTARIA: "Portaria",
   RECEPCAO: "Recepção",
   TI: "TI",
@@ -48,5 +48,5 @@ export function podeConferirLivro(papel: Papel): boolean {
 }
 
 export function podeAdministrarSistema(papel: Papel): boolean {
-  return papel === "TI_ADMIN" || papel === "ADMINISTRACAO";
+  return papel === "TI_ADMIN" || papel === "ADMINISTRACAO" || papel === "SINDICA";
 }

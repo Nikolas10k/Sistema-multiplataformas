@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { exigirUsuario } from "@/lib/auth";
+import { exigirContexto } from "@/lib/auth";
 import { podeConferirLivro } from "@/lib/permissoes";
-import { dataDoBanco, dataParaBanco, formatarData, formatarDataHora, partesSP, somarDias } from "@/lib/tempo";
+import { dataDoBanco, dataParaBanco, formatarData, formatarDataHora, ultimoDiaEncerrado } from "@/lib/tempo";
 import { Avisos } from "@/componentes/ui";
 import { BotaoEnviar } from "@/componentes/BotaoEnviar";
 import { BotaoImprimir } from "@/componentes/BotaoImprimir";
@@ -13,15 +13,19 @@ export const dynamic = "force-dynamic";
 type Params = Promise<{ data?: string; erro?: string }>;
 
 export default async function PaginaLivro({ searchParams }: { searchParams: Params }) {
-  const usuario = await exigirUsuario();
+  const { usuario, condominio, relogio: r } = await exigirContexto();
   if (!podeConferirLivro(usuario.papel)) redirect("/");
   const params = await searchParams;
-  const p = partesSP();
-  const padrao = somarDias(p.dataISO, p.hora < 7 ? -2 : -1);
+  const padrao = ultimoDiaEncerrado(r);
   const data = params.data && /^\d{4}-\d{2}-\d{2}$/.test(params.data) ? params.data : padrao;
   const [livro, recentes] = await Promise.all([
-    db.livroDiario.findUnique({ where: { data: dataParaBanco(data) } }),
-    db.livroDiario.findMany({ orderBy: { data: "desc" }, take: 10, select: { data: true, conferidoEm: true } }),
+    db.livroDiario.findUnique({ where: { condominioId_data: { condominioId: condominio.id, data: dataParaBanco(data) } } }),
+    db.livroDiario.findMany({
+      where: { condominioId: condominio.id },
+      orderBy: { data: "desc" },
+      take: 10,
+      select: { data: true, conferidoEm: true },
+    }),
   ]);
 
   return (
@@ -30,8 +34,8 @@ export default async function PaginaLivro({ searchParams }: { searchParams: Para
         <div>
           <h1>Livro de ocorrências</h1>
           <div className="subtitulo">
-            Dia operacional das 07h às 07h. Gerado automaticamente às 07h10 com tudo o que foi registrado; o encarregado ou o
-            supervisor confere e assina.
+            Dia operacional das {r.inicioDia} às {r.inicioDia} do dia seguinte. Gerado automaticamente logo após a troca de
+            turno da manhã com tudo o que foi registrado; o encarregado ou o supervisor confere e assina.
           </div>
         </div>
       </div>
@@ -74,12 +78,14 @@ export default async function PaginaLivro({ searchParams }: { searchParams: Para
         </div>
         {livro ? (
           <>
-            <h2>Livro de ocorrências · {formatarData(data)}</h2>
+            <h2>
+              Livro de ocorrências · {condominio.nome} · {formatarData(data)}
+            </h2>
             <div className="documento">{livro.conteudo}</div>
             <p className="suave" style={{ marginTop: 16 }}>
-              Gerado em {formatarDataHora(livro.geradoEm)}.{" "}
+              Gerado em {formatarDataHora(r, livro.geradoEm)}.{" "}
               {livro.conferidoEm
-                ? `Conferido por ${livro.conferidoPor} em ${formatarDataHora(livro.conferidoEm)}.`
+                ? `Conferido por ${livro.conferidoPor} em ${formatarDataHora(r, livro.conferidoEm)}.`
                 : "Aguardando conferência."}
             </p>
           </>

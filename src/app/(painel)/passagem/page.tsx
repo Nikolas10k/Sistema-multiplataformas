@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { exigirContexto } from "@/lib/auth";
 import { dataDoBanco, formatarData, formatarDataHora, nomeTurno, plantaoEm } from "@/lib/tempo";
 import { Avisos, type ParamsAviso } from "@/componentes/ui";
 import { BotaoEnviar } from "@/componentes/BotaoEnviar";
@@ -8,7 +9,9 @@ export const dynamic = "force-dynamic";
 
 export default async function PaginaPassagem({ searchParams }: { searchParams: ParamsAviso }) {
   const params = await searchParams;
+  const { condominio, relogio: r } = await exigirContexto();
   const passagens = await db.passagemTurno.findMany({
+    where: { condominioId: condominio.id },
     include: { autor: { select: { nome: true } } },
     orderBy: { geradoEm: "desc" },
     take: 14,
@@ -19,12 +22,12 @@ export default async function PaginaPassagem({ searchParams }: { searchParams: P
         <div>
           <h1>Passagem de turno</h1>
           <div className="subtitulo">
-            Gerada automaticamente 15 minutos antes de cada troca (06h45 e 18h45) e enviada ao encarregado que assume e ao
-            supervisor. Você também pode gerar agora.
+            Gerada automaticamente 15 minutos antes de cada troca de turno e enviada ao encarregado que assume e ao supervisor.
+            Você também pode gerar agora.
           </div>
         </div>
         <form action={acaoGerarPassagem}>
-          <BotaoEnviar texto={`Gerar agora (${nomeTurno(plantaoEm().turno)})`} pendente="Gerando…" />
+          <BotaoEnviar texto={`Gerar agora (${nomeTurno(r, plantaoEm(r).turno)})`} pendente="Gerando…" />
         </form>
       </div>
       <Avisos ok={params.ok} erro={params.erro} />
@@ -33,10 +36,10 @@ export default async function PaginaPassagem({ searchParams }: { searchParams: P
         <div key={p.id} className="cartao">
           <div className="linha" style={{ justifyContent: "space-between" }}>
             <strong>
-              {formatarData(dataDoBanco(p.data))} · {nomeTurno(p.turno)}
+              {formatarData(dataDoBanco(p.data))} · {nomeTurno(r, p.turno)}
             </strong>
             <span className="suave">
-              gerada {formatarDataHora(p.geradoEm)} {p.autor ? `por ${p.autor.nome}` : "automaticamente"}
+              gerada {formatarDataHora(r, p.geradoEm)} {p.autor ? `por ${p.autor.nome}` : "automaticamente"}
             </span>
           </div>
           <div style={{ whiteSpace: "pre-wrap", marginTop: 8 }}>{p.resumo}</div>

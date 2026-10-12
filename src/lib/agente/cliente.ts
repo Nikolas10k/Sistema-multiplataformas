@@ -37,4 +37,15 @@ export function criarMensagem(params: Parametros) {
   });
 }
 
+type Uso = { input_tokens: number; output_tokens: number; cache_read_input_tokens?: number | null; cache_creation_input_tokens?: number | null };
+
+/** Soma o consumo de uma resposta (para limites do plano e custo por condomínio). */
+export function consumoDe(uso: Uso) {
+  return {
+    entrada: uso.input_tokens + (uso.cache_creation_input_tokens ?? 0),
+    saida: uso.output_tokens,
+    cache: uso.cache_read_input_tokens ?? 0,
+  };
+}
+
 export { Anthropic };

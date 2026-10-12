@@ -1,11 +1,13 @@
 import { z } from "zod";
-import type { Canal, Local, Usuario } from "@prisma/client";
+import type { Canal, Local } from "@prisma/client";
 import { db } from "./db";
+import type { Contexto } from "./auth";
 import { notificarSetor } from "./notificacoes";
 import { podeGerirOcorrencias } from "./permissoes";
-import { partesSP, plantaoEm, type Plantao } from "./tempo";
+import { partesLocais, plantaoEm, type Plantao, type Relogio } from "./tempo";
 
 // Funções de negócio usadas tanto pelas telas quanto pelo agente.
+// REGRA: toda consulta e alteração filtra pelo condomínio de quem está agindo.
 
 export class ErroOperacao extends Error {}
 
@@ -36,8 +38,8 @@ function aliases(texto: string): string[] {
   return saida;
 }
 
-export async function resolverLocal(texto: string): Promise<{ local?: Local; candidatos: Local[] }> {
-  const locais = await db.local.findMany({ where: { ativo: true }, orderBy: { ordem: "asc" } });
+export async function resolverLocal(condominioId: string, texto: string): Promise<{ local?: Local; candidatos: Local[] }> {
+  const locais = await db.local.findMany({ where: { condominioId, ativo: true }, orderBy: { ordem: "asc" } });
   const chaves = aliases(texto);
   const exato = locais.find((l) => chaves.includes(normalizar(l.nome)));
   if (exato) return { local: exato, candidatos: [] };
@@ -46,8 +48,8 @@ export async function resolverLocal(texto: string): Promise<{ local?: Local; can
   return { candidatos: parciais.slice(0, 10) };
 }
 
-async function exigirLocal(texto: string): Promise<Local> {
-  const { local, candidatos } = await resolverLocal(texto);
+async function exigirLocal(condominioId: string, texto: string): Promise<Local> {
+  const { local, candidatos } = await resolverLocal(condominioId, texto);
   if (local) return local;
   const sugestao = candidatos.length
     ? ` Você quis dizer: ${candidatos.map((c) => c.nome).join(", ")}?`
@@ -65,13 +67,14 @@ export const RegistrarRondaInput = z.object({
   observacao: z.string().optional().describe("O que foi verificado ou encontrado"),
 });
 
-export async function registrarRonda(input: z.input<typeof RegistrarRondaInput>, usuario: Usuario, canal: Canal) {
+export async function registrarRonda(ctx: Contexto, input: z.input<typeof RegistrarRondaInput>, canal: Canal) {
   const dados = RegistrarRondaInput.parse(input);
-  const local = await exigirLocal(dados.local);
+  const local = await exigirLocal(ctx.condominio.id, dados.local);
   return db.ronda.create({
     data: {
+      condominioId: ctx.condominio.id,
       localId: local.id,
-      porteiroId: usuario.id,
+      porteiroId: ctx.usuario.id,
       comAlteracao: dados.com_alteracao,
       observacao: dados.observacao?.trim() || null,
       canal,
@@ -88,16 +91,21 @@ export type SituacaoRonda = {
 };
 
 /** Checklist de rondas do plantão: o que já foi rondado, o que falta e o que está atrasado. */
-export async function situacaoRondas(p: Plantao = plantaoEm(), agora = new Date()): Promise<SituacaoRonda[]> {
+export async function situacaoRondas(
+  condominioId: string,
+  relogio: Relogio,
+  p: Plantao = plantaoEm(relogio),
+  agora = new Date(),
+): Promise<SituacaoRonda[]> {
   const [locais, rondas] = await Promise.all([
-    db.local.findMany({ where: { ativo: true, exigeRonda: true }, orderBy: { ordem: "asc" } }),
+    db.local.findMany({ where: { condominioId, ativo: true, exigeRonda: true }, orderBy: { ordem: "asc" } }),
     db.ronda.findMany({
-      where: { realizadaEm: { gte: p.inicio, lt: p.fim } },
+      where: { condominioId, realizadaEm: { gte: p.inicio, lt: p.fim } },
       select: { localId: true, realizadaEm: true },
       orderBy: { realizadaEm: "desc" },
     }),
   ]);
-  const diaSemana = partesSP(agora).diaSemana;
+  const diaSemana = partesLocais(relogio, agora).diaSemana;
   return locais.map((local) => {
     const doLocal = rondas.filter((r) => r.localId === local.id);
     const ultima = doLocal[0]?.realizadaEm ?? null;
@@ -141,18 +149,26 @@ export const RegistrarOcorrenciaInput = z.object({
   setor: SetorEnum.describe("Setor que precisa resolver"),
   local: z.string().optional(),
   sala: z.string().optional(),
-  fotos: z.array(z.string()).default([]).describe("Nomes de arquivo das fotos recebidas"),
+  fotos: z
+    .array(z.string().regex(/^[0-9a-f-]{36}\.(jpg|png|webp)$/, "Nome de foto inválido"))
+    .default([])
+    .describe("Nomes de arquivo das fotos recebidas"),
 });
 
-export async function registrarOcorrencia(
-  input: z.input<typeof RegistrarOcorrenciaInput>,
-  usuario: Usuario,
-  canal: Canal,
-) {
+export async function registrarOcorrencia(ctx: Contexto, input: z.input<typeof RegistrarOcorrenciaInput>, canal: Canal) {
   const dados = RegistrarOcorrenciaInput.parse(input);
-  const local = dados.local ? await exigirLocal(dados.local) : null;
-  const ocorrencia = await db.ocorrencia.create({
+  const local = dados.local ? await exigirLocal(ctx.condominio.id, dados.local) : null;
+  const ocorrencia = await db.$transaction(async (tx) => {
+    // Numeração própria de cada condomínio (#1, #2, …), atômica mesmo com registros simultâneos.
+    const { ultimoNumeroOcorrencia: numero } = await tx.condominio.update({
+      where: { id: ctx.condominio.id },
+      data: { ultimoNumeroOcorrencia: { increment: 1 } },
+      select: { ultimoNumeroOcorrencia: true },
+    });
+    return tx.ocorrencia.create({
     data: {
+      condominioId: ctx.condominio.id,
+      numero,
       titulo: dados.titulo.trim(),
       descricao: dados.descricao.trim(),
       categoria: dados.categoria,
@@ -161,14 +177,15 @@ export async function registrarOcorrencia(
       localId: local?.id,
       sala: dados.sala?.trim() || null,
       fotos: dados.fotos,
-      registradoPorId: usuario.id,
+      registradoPorId: ctx.usuario.id,
       canal,
     },
     include: { local: true },
+    });
   });
   let pessoasAvisadas = 0;
   if (ocorrencia.prioridade === "ALTA" || ocorrencia.prioridade === "URGENTE") {
-    pessoasAvisadas = await notificarSetor(ocorrencia).catch((e) => {
+    pessoasAvisadas = await notificarSetor(ctx.condominio, ocorrencia).catch((e) => {
       console.error("[notificacao] falhou", e);
       return 0;
     });
@@ -177,7 +194,7 @@ export async function registrarOcorrencia(
 }
 
 export const AtualizarOcorrenciaInput = z.object({
-  id: z.coerce.number().int().positive(),
+  numero: z.coerce.number().int().positive().describe("Número da ocorrência (#)"),
   status: StatusOcorrencia.optional(),
   resolucao: z.string().optional().describe("O que foi feito (obrigatório ao resolver)"),
   prioridade: Prioridade.optional(),
@@ -185,10 +202,13 @@ export const AtualizarOcorrenciaInput = z.object({
   complemento: z.string().optional().describe("Informação nova a acrescentar na descrição"),
 });
 
-export async function atualizarOcorrencia(input: z.input<typeof AtualizarOcorrenciaInput>, usuario: Usuario) {
+export async function atualizarOcorrencia(ctx: Contexto, input: z.input<typeof AtualizarOcorrenciaInput>) {
+  const { usuario } = ctx;
   const dados = AtualizarOcorrenciaInput.parse(input);
-  const atual = await db.ocorrencia.findUnique({ where: { id: dados.id } });
-  if (!atual) throw new ErroOperacao(`Ocorrência #${dados.id} não existe.`);
+  const atual = await db.ocorrencia.findUnique({
+    where: { condominioId_numero: { condominioId: ctx.condominio.id, numero: dados.numero } },
+  });
+  if (!atual) throw new ErroOperacao(`Ocorrência #${dados.numero} não existe.`);
   if (!podeGerirOcorrencias(usuario.papel) && atual.registradoPorId !== usuario.id) {
     throw new ErroOperacao("Você só pode alterar ocorrências que você registrou. Peça ao encarregado ou supervisor.");
   }
@@ -199,7 +219,7 @@ export async function atualizarOcorrencia(input: z.input<typeof AtualizarOcorren
     ? `${atual.descricao}\n\n[${new Date().toISOString()} · ${usuario.nome}] ${dados.complemento.trim()}`
     : undefined;
   const atualizada = await db.ocorrencia.update({
-    where: { id: dados.id },
+    where: { id: atual.id },
     data: {
       status: dados.status,
       prioridade: dados.prioridade,
@@ -218,7 +238,7 @@ export async function atualizarOcorrencia(input: z.input<typeof AtualizarOcorren
     (dados.setor && dados.setor !== atual.setor && (atualizada.prioridade === "ALTA" || atualizada.prioridade === "URGENTE"));
   let pessoasAvisadas = 0;
   if (escalou && atualizada.status !== "RESOLVIDA") {
-    pessoasAvisadas = await notificarSetor(atualizada).catch((e) => {
+    pessoasAvisadas = await notificarSetor(ctx.condominio, atualizada).catch((e) => {
       console.error("[notificacao] falhou", e);
       return 0;
     });
@@ -234,10 +254,11 @@ export const ListarOcorrenciasInput = z.object({
   limite: z.number().int().min(1).max(50).default(20),
 });
 
-export async function listarOcorrencias(input: z.input<typeof ListarOcorrenciasInput>) {
+export async function listarOcorrencias(condominioId: string, input: z.input<typeof ListarOcorrenciasInput>) {
   const dados = ListarOcorrenciasInput.parse(input);
   return db.ocorrencia.findMany({
     where: {
+      condominioId,
       status:
         dados.status === "ABERTAS"
           ? { in: ["ABERTA", "EM_ANDAMENTO"] }
@@ -279,11 +300,12 @@ export const RegistrarAcessoInput = z.object({
   observacao: z.string().optional(),
 });
 
-export async function registrarAcesso(input: z.input<typeof RegistrarAcessoInput>, usuario: Usuario, canal: Canal) {
+export async function registrarAcesso(ctx: Contexto, input: z.input<typeof RegistrarAcessoInput>, canal: Canal) {
   const dados = RegistrarAcessoInput.parse(input);
-  const local = dados.local ? await exigirLocal(dados.local) : null;
+  const local = dados.local ? await exigirLocal(ctx.condominio.id, dados.local) : null;
   return db.registroAcesso.create({
     data: {
+      condominioId: ctx.condominio.id,
       nome: dados.nome.trim(),
       tipo: dados.tipo,
       sala: dados.sala?.trim() || null,
@@ -292,17 +314,22 @@ export async function registrarAcesso(input: z.input<typeof RegistrarAcessoInput
       localId: local?.id,
       cadastradoInvenzi: dados.cadastrado_invenzi,
       observacao: dados.observacao?.trim() || null,
-      registradoPorId: usuario.id,
+      registradoPorId: ctx.usuario.id,
       canal,
     },
   });
 }
 
-export async function registrarSaida(id: string) {
-  const registro = await db.registroAcesso.findUnique({ where: { id } });
+export async function registrarSaida(condominioId: string, id: string) {
+  const registro = await db.registroAcesso.findFirst({ where: { id, condominioId } });
   if (!registro) throw new ErroOperacao("Registro de acesso não encontrado.");
   if (registro.saidaEm) throw new ErroOperacao(`${registro.nome} já tinha saída registrada.`);
   return db.registroAcesso.update({ where: { id }, data: { saidaEm: new Date() } });
+}
+
+export async function confirmarInvenzi(condominioId: string, id: string) {
+  const { count } = await db.registroAcesso.updateMany({ where: { id, condominioId }, data: { cadastradoInvenzi: true } });
+  if (!count) throw new ErroOperacao("Registro de acesso não encontrado.");
 }
 
 export const BuscarAcessosInput = z.object({
@@ -312,10 +339,11 @@ export const BuscarAcessosInput = z.object({
   limite: z.number().int().min(1).max(50).default(20),
 });
 
-export async function buscarAcessos(input: z.input<typeof BuscarAcessosInput>) {
+export async function buscarAcessos(condominioId: string, input: z.input<typeof BuscarAcessosInput>) {
   const dados = BuscarAcessosInput.parse(input);
   return db.registroAcesso.findMany({
     where: {
+      condominioId,
       entradaEm: { gte: new Date(Date.now() - dados.ultimas_horas * 3600_000) },
       saidaEm: dados.apenas_no_predio ? null : undefined,
       OR: dados.termo
@@ -351,15 +379,16 @@ export const SolicitarApoioInput = z.object({
   observacao: z.string().optional(),
 });
 
-export async function solicitarApoio(input: z.input<typeof SolicitarApoioInput>, usuario: Usuario) {
+export async function solicitarApoio(ctx: Contexto, input: z.input<typeof SolicitarApoioInput>) {
   const dados = SolicitarApoioInput.parse(input);
   return db.atendimentoAcessibilidade.create({
     data: {
+      condominioId: ctx.condominio.id,
       pessoa: dados.pessoa.trim(),
       necessidade: dados.necessidade,
       destino: dados.destino?.trim() || null,
       observacao: dados.observacao?.trim() || null,
-      solicitadoPorId: usuario.id,
+      solicitadoPorId: ctx.usuario.id,
     },
   });
 }
@@ -369,9 +398,10 @@ export const AtualizarApoioInput = z.object({
   status: z.enum(["EM_ATENDIMENTO", "CONCLUIDO", "CANCELADO"]),
 });
 
-export async function atualizarApoio(input: z.input<typeof AtualizarApoioInput>, usuario: Usuario) {
+export async function atualizarApoio(ctx: Contexto, input: z.input<typeof AtualizarApoioInput>) {
+  const { usuario } = ctx;
   const dados = AtualizarApoioInput.parse(input);
-  const atual = await db.atendimentoAcessibilidade.findUnique({ where: { id: dados.id } });
+  const atual = await db.atendimentoAcessibilidade.findFirst({ where: { id: dados.id, condominioId: ctx.condominio.id } });
   if (!atual) throw new ErroOperacao("Atendimento não encontrado.");
   return db.atendimentoAcessibilidade.update({
     where: { id: dados.id },
@@ -384,9 +414,9 @@ export async function atualizarApoio(input: z.input<typeof AtualizarApoioInput>,
   });
 }
 
-export async function apoiosPendentes() {
+export async function apoiosPendentes(condominioId: string) {
   return db.atendimentoAcessibilidade.findMany({
-    where: { status: { in: ["SOLICITADO", "EM_ATENDIMENTO"] } },
+    where: { condominioId, status: { in: ["SOLICITADO", "EM_ATENDIMENTO"] } },
     include: { atendidoPor: { select: { nome: true } } },
     orderBy: { criadoEm: "asc" },
   });
@@ -396,34 +426,34 @@ export async function apoiosPendentes() {
 // Consolidação (passagem de turno e livro do dia)
 // ------------------------------------------------------------------
 
-export async function dadosDoPeriodo(inicio: Date, fim: Date) {
+export async function dadosDoPeriodo(condominioId: string, inicio: Date, fim: Date) {
   const [rondas, ocorrenciasCriadas, ocorrenciasResolvidas, acessos, apoios, abertas] = await Promise.all([
     db.ronda.findMany({
-      where: { realizadaEm: { gte: inicio, lt: fim } },
+      where: { condominioId, realizadaEm: { gte: inicio, lt: fim } },
       include: { local: true, porteiro: { select: { nome: true } } },
       orderBy: { realizadaEm: "asc" },
     }),
     db.ocorrencia.findMany({
-      where: { criadaEm: { gte: inicio, lt: fim } },
+      where: { condominioId, criadaEm: { gte: inicio, lt: fim } },
       include: { local: true, registradoPor: { select: { nome: true } } },
       orderBy: { criadaEm: "asc" },
     }),
     db.ocorrencia.findMany({
-      where: { resolvidaEm: { gte: inicio, lt: fim } },
+      where: { condominioId, resolvidaEm: { gte: inicio, lt: fim } },
       include: { resolvidaPor: { select: { nome: true } } },
       orderBy: { resolvidaEm: "asc" },
     }),
     db.registroAcesso.findMany({
-      where: { entradaEm: { gte: inicio, lt: fim } },
+      where: { condominioId, entradaEm: { gte: inicio, lt: fim } },
       orderBy: { entradaEm: "asc" },
     }),
     db.atendimentoAcessibilidade.findMany({
-      where: { criadoEm: { gte: inicio, lt: fim } },
+      where: { condominioId, criadoEm: { gte: inicio, lt: fim } },
       include: { atendidoPor: { select: { nome: true } } },
       orderBy: { criadoEm: "asc" },
     }),
     db.ocorrencia.findMany({
-      where: { status: { in: ["ABERTA", "EM_ANDAMENTO"] } },
+      where: { condominioId, status: { in: ["ABERTA", "EM_ANDAMENTO"] } },
       include: { local: true },
       orderBy: { criadaEm: "asc" },
     }),

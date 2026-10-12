@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { exigirContexto } from "@/lib/auth";
 import { formatarDataHora, formatarHora, horasAtras } from "@/lib/tempo";
 import { Avisos, NECESSIDADES, type ParamsAviso } from "@/componentes/ui";
 import { acaoAtualizarApoio, acaoSolicitarApoio } from "../acoes";
@@ -9,14 +10,15 @@ const NOME_NECESSIDADE = Object.fromEntries(NECESSIDADES) as Record<string, stri
 
 export default async function PaginaAcessibilidade({ searchParams }: { searchParams: ParamsAviso }) {
   const params = await searchParams;
+  const { condominio, relogio: r } = await exigirContexto();
   const [ativos, concluidos] = await Promise.all([
     db.atendimentoAcessibilidade.findMany({
-      where: { status: { in: ["SOLICITADO", "EM_ATENDIMENTO"] } },
+      where: { condominioId: condominio.id, status: { in: ["SOLICITADO", "EM_ATENDIMENTO"] } },
       include: { solicitadoPor: { select: { nome: true } }, atendidoPor: { select: { nome: true } } },
       orderBy: { criadoEm: "asc" },
     }),
     db.atendimentoAcessibilidade.findMany({
-      where: { status: { in: ["CONCLUIDO", "CANCELADO"] }, criadoEm: { gte: horasAtras(24) } },
+      where: { condominioId: condominio.id, status: { in: ["CONCLUIDO", "CANCELADO"] }, criadoEm: { gte: horasAtras(24) } },
       include: { atendidoPor: { select: { nome: true } } },
       orderBy: { criadoEm: "desc" },
     }),
@@ -78,7 +80,7 @@ export default async function PaginaAcessibilidade({ searchParams }: { searchPar
                 <td>
                   <strong>{a.pessoa}</strong> · {NOME_NECESSIDADE[a.necessidade]}
                   <div className="suave">
-                    {a.destino ?? "destino não informado"} · pedido por {a.solicitadoPor.nome} às {formatarHora(a.criadoEm)}
+                    {a.destino ?? "destino não informado"} · pedido por {a.solicitadoPor.nome} às {formatarHora(r, a.criadoEm)}
                   </div>
                   {a.observacao && <div className="suave">{a.observacao}</div>}
                 </td>
@@ -128,7 +130,7 @@ export default async function PaginaAcessibilidade({ searchParams }: { searchPar
                   <td>{a.destino ?? "—"}</td>
                   <td>{a.status === "CONCLUIDO" ? <span className="selo ok">Concluído</span> : <span className="selo">Cancelado</span>}</td>
                   <td className="suave">
-                    {a.atendidoPor?.nome} {a.concluidoEm && `· ${formatarDataHora(a.concluidoEm)}`}
+                    {a.atendidoPor?.nome} {a.concluidoEm && `· ${formatarDataHora(r, a.concluidoEm)}`}
                   </td>
                 </tr>
               ))}

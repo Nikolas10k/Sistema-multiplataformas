@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { exigirUsuario } from "@/lib/auth";
+import { exigirContexto } from "@/lib/auth";
 import { NOME_SETOR, podeGerirOcorrencias } from "@/lib/permissoes";
 import { formatarDataHora } from "@/lib/tempo";
 import { urlArquivo } from "@/lib/arquivos";
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 type Params = Promise<{ ok?: string; erro?: string; status?: string; setor?: string }>;
 
 export default async function PaginaOcorrencias({ searchParams }: { searchParams: Params }) {
-  const usuario = await exigirUsuario();
+  const { usuario, condominio, relogio: r } = await exigirContexto();
   const params = await searchParams;
   const filtroStatus = params.status ?? "abertas";
   const filtroSetor = params.setor && params.setor in NOME_SETOR ? (params.setor as Setor) : undefined;
@@ -20,6 +20,7 @@ export default async function PaginaOcorrencias({ searchParams }: { searchParams
   const [ocorrencias, locais] = await Promise.all([
     db.ocorrencia.findMany({
       where: {
+        condominioId: condominio.id,
         status: filtroStatus === "abertas" ? { in: ["ABERTA", "EM_ANDAMENTO"] } : filtroStatus === "resolvidas" ? "RESOLVIDA" : undefined,
         setor: filtroSetor,
       },
@@ -27,7 +28,7 @@ export default async function PaginaOcorrencias({ searchParams }: { searchParams
       orderBy: filtroStatus === "abertas" ? [{ prioridade: "desc" }, { criadaEm: "asc" }] : [{ criadaEm: "desc" }],
       take: 100,
     }),
-    db.local.findMany({ where: { ativo: true }, orderBy: { ordem: "asc" } }),
+    db.local.findMany({ where: { condominioId: condominio.id, ativo: true }, orderBy: { ordem: "asc" } }),
   ]);
   const gestor = podeGerirOcorrencias(usuario.papel);
 
@@ -131,18 +132,18 @@ export default async function PaginaOcorrencias({ searchParams }: { searchParams
             <div className="linha" style={{ justifyContent: "space-between" }}>
               <div className="linha">
                 <strong>
-                  #{o.id} · {o.titulo}
+                  #{o.numero} · {o.titulo}
                 </strong>
                 <SeloPrioridade p={o.prioridade} />
                 <SeloStatus s={o.status} />
               </div>
-              <span className="suave">{formatarDataHora(o.criadaEm)}</span>
+              <span className="suave">{formatarDataHora(r, o.criadaEm)}</span>
             </div>
             <p className="suave" style={{ marginTop: 4 }}>
               {NOME_SETOR[o.setor]}
               {o.local && ` · ${o.local.nome}`}
               {o.sala && ` · sala ${o.sala}`} · registrada por {o.registradoPor.nome} ({o.canal === "WHATSAPP" ? "WhatsApp" : "sistema"})
-              {o.setorNotificadoEm && ` · setor avisado às ${formatarDataHora(o.setorNotificadoEm)}`}
+              {o.setorNotificadoEm && ` · setor avisado às ${formatarDataHora(r, o.setorNotificadoEm)}`}
             </p>
             <p style={{ whiteSpace: "pre-wrap" }}>{o.descricao}</p>
             {o.fotos.length > 0 && (
@@ -163,7 +164,7 @@ export default async function PaginaOcorrencias({ searchParams }: { searchParams
             )}
             {podeAlterar && o.status !== "RESOLVIDA" && (
               <form action={acaoAtualizarOcorrencia} className="linha" style={{ marginTop: 8 }}>
-                <input type="hidden" name="id" value={o.id} />
+                <input type="hidden" name="numero" value={o.numero} />
                 <select name="status" defaultValue="RESOLVIDA" style={{ width: "auto" }}>
                   <option value="EM_ANDAMENTO">Em andamento</option>
                   <option value="RESOLVIDA">Resolvida</option>
@@ -176,7 +177,7 @@ export default async function PaginaOcorrencias({ searchParams }: { searchParams
             )}
             {podeAlterar && o.status === "RESOLVIDA" && (
               <form action={acaoAtualizarOcorrencia} style={{ marginTop: 8 }}>
-                <input type="hidden" name="id" value={o.id} />
+                <input type="hidden" name="numero" value={o.numero} />
                 <input type="hidden" name="status" value="ABERTA" />
                 <button type="submit" className="secundario pequeno">
                   Reabrir

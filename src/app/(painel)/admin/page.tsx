@@ -1,10 +1,10 @@
 import type { Equipe, Local, Usuario } from "@prisma/client";
 import { db } from "@/lib/db";
-import { exigirUsuario } from "@/lib/auth";
+import { exigirContexto } from "@/lib/auth";
 import { NOME_PAPEL } from "@/lib/permissoes";
 import { dataDoBanco } from "@/lib/tempo";
 import { Avisos, type ParamsAviso } from "@/componentes/ui";
-import { acaoSalvarEquipe, acaoSalvarLocal, acaoSalvarUsuario } from "../acoes";
+import { acaoCriarEquipe, acaoSalvarEquipe, acaoSalvarLocal, acaoSalvarUsuario } from "../acoes";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +34,7 @@ function FormUsuario({ u, equipes }: { u?: Usuario; equipes: Equipe[] }) {
         </label>
         <label>
           {u ? "Nova senha (deixe vazio para manter)" : "Senha"}
-          <input name="senha" type="password" autoComplete="new-password" minLength={6} required={!u} />
+          <input name="senha" type="password" autoComplete="new-password" minLength={8} required={!u} />
         </label>
         <label>
           Função
@@ -128,20 +128,30 @@ function FormLocal({ l }: { l?: Local }) {
 }
 
 export default async function PaginaAdmin({ searchParams }: { searchParams: ParamsAviso }) {
-  await exigirUsuario(["TI_ADMIN", "ADMINISTRACAO"]);
+  const { condominio } = await exigirContexto({ papeis: ["TI_ADMIN", "ADMINISTRACAO", "SINDICA"] });
   const params = await searchParams;
-  const [usuarios, equipes, locais] = await Promise.all([
-    db.usuario.findMany({ orderBy: [{ ativo: "desc" }, { papel: "asc" }, { nome: "asc" }], include: { equipe: true } }),
-    db.equipe.findMany({ orderBy: { nome: "asc" } }),
-    db.local.findMany({ orderBy: { ordem: "asc" } }),
+  const cid = condominio.id;
+  const [usuarios, equipes, locais, plano] = await Promise.all([
+    db.usuario.findMany({
+      where: { condominioId: cid },
+      orderBy: [{ ativo: "desc" }, { papel: "asc" }, { nome: "asc" }],
+      include: { equipe: true },
+    }),
+    db.equipe.findMany({ where: { condominioId: cid }, orderBy: { nome: "asc" } }),
+    db.local.findMany({ where: { condominioId: cid }, orderBy: { ordem: "asc" } }),
+    condominio.planoId ? db.plano.findUnique({ where: { id: condominio.planoId } }) : null,
   ]);
+  const ativos = usuarios.filter((u) => u.ativo).length;
 
   return (
     <div className="pilha">
       <div className="cabecalho">
         <div>
-          <h1>Cadastros</h1>
-          <div className="subtitulo">Equipe, escalas e locais do prédio. O WhatsApp cadastrado é o que o agente reconhece.</div>
+          <h1>Equipe e locais</h1>
+          <div className="subtitulo">
+            Pessoas, escalas e locais do prédio. O WhatsApp cadastrado é o que o agente reconhece.
+            {plano?.maxUsuarios ? ` Usuários ativos: ${ativos} de ${plano.maxUsuarios} do plano ${plano.nome}.` : ""}
+          </div>
         </div>
       </div>
       <Avisos ok={params.ok} erro={params.erro} />
@@ -165,6 +175,17 @@ export default async function PaginaAdmin({ searchParams }: { searchParams: Para
             </button>
           </form>
         ))}
+        <form action={acaoCriarEquipe} className="linha" style={{ marginTop: 12, borderTop: "1px solid var(--borda)", paddingTop: 12 }}>
+          <input name="nome" placeholder="Nova equipe (ex.: E)" style={{ width: 160 }} required maxLength={20} />
+          <select name="turno" defaultValue="DIA" style={{ width: 170 }}>
+            <option value="DIA">Dia</option>
+            <option value="NOITE">Noite</option>
+          </select>
+          <input type="date" name="dataReferencia" style={{ width: 170 }} required />
+          <button type="submit" className="pequeno secundario">
+            Adicionar equipe
+          </button>
+        </form>
       </div>
 
       <div className="cartao">

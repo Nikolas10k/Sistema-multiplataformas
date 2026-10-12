@@ -8,6 +8,143 @@ datasource db {
 }
 
 // ------------------------------------------------------
+// PLATAFORMA (SaaS): condomínios clientes, planos e cobrança
+// ------------------------------------------------------
+
+enum StatusCondominio {
+  TESTE // período de avaliação gratuito
+  ATIVO // assinatura em dia
+  INADIMPLENTE // fatura vencida, ainda dentro da carência
+  SUSPENSO // bloqueado (teste expirado ou inadimplência além da carência)
+  CANCELADO
+}
+
+enum TipoCondominio {
+  COMERCIAL
+  RESIDENCIAL
+  MISTO
+}
+
+model Plano {
+  id              String       @id @default(cuid())
+  nome            String       @unique
+  descricao       String       @default("")
+  precoMensal     Decimal      @db.Decimal(10, 2)
+  // null = ilimitado
+  maxUsuarios     Int?
+  maxMensagensMes Int?
+  ativo           Boolean      @default(true)
+  ordem           Int          @default(0)
+  condominios     Condominio[]
+}
+
+model Condominio {
+  id     String           @id @default(cuid())
+  nome   String
+  slug   String           @unique
+  tipo   TipoCondominio   @default(COMERCIAL)
+  cnpj   String?
+  status StatusCondominio @default(TESTE)
+
+  // Descrição do prédio usada pelo agente (estrutura, equipes, regras da casa)
+  perfil          String @default("")
+  fuso            String @default("America/Sao_Paulo")
+  horaInicioDia   String @default("07:00")
+  horaInicioNoite String @default("19:00")
+
+  // WhatsApp Cloud API: número próprio do condomínio
+  whatsappPhoneNumberId  String? @unique
+  whatsappNumeroExibicao String?
+  whatsappTokenCripto    String? // token criptografado; vazio = usa o token da plataforma
+
+  // Contato e cobrança
+  responsavelNome     String
+  responsavelEmail    String
+  responsavelTelefone String?
+  cpfCnpjCobranca     String?
+  planoId             String?
+  plano               Plano?    @relation(fields: [planoId], references: [id])
+  testeAte            DateTime?
+  inadimplenteDesde   DateTime?
+  asaasCustomerId     String?   @unique
+  asaasSubscriptionId String?   @unique
+
+  // Numeração sequencial de ocorrências por condomínio
+  ultimoNumeroOcorrencia Int @default(0)
+
+  criadoEm DateTime @default(now())
+
+  usuarios    Usuario[]
+  equipes     Equipe[]
+  locais      Local[]
+  rondas      Ronda[]
+  ocorrencias Ocorrencia[]
+  acessos     RegistroAcesso[]
+  apoios      AtendimentoAcessibilidade[]
+  passagens   PassagemTurno[]
+  livros      LivroDiario[]
+  faturas     Fatura[]
+  usos        UsoMensal[]
+  auditoria   EventoAuditoria[]
+
+  @@index([status])
+}
+
+model Fatura {
+  id             String     @id @default(cuid())
+  condominioId   String
+  condominio     Condominio @relation(fields: [condominioId], references: [id], onDelete: Cascade)
+  asaasPaymentId String     @unique
+  valor          Decimal    @db.Decimal(10, 2)
+  vencimento     DateTime   @db.Date
+  status         String // status do Asaas (PENDING, RECEIVED, CONFIRMED, OVERDUE…)
+  linkFatura     String?
+  pagaEm         DateTime?
+  atualizadaEm   DateTime   @updatedAt
+
+  @@index([condominioId, vencimento])
+}
+
+// Consumo do agente por mês (limites do plano e custo)
+model UsoMensal {
+  condominioId  String
+  condominio    Condominio @relation(fields: [condominioId], references: [id], onDelete: Cascade)
+  mes           String // AAAA-MM
+  mensagens     Int        @default(0)
+  tokensEntrada Int        @default(0)
+  tokensSaida   Int        @default(0)
+  tokensCache   Int        @default(0)
+
+  @@id([condominioId, mes])
+}
+
+model AdminPlataforma {
+  id        String   @id @default(cuid())
+  nome      String
+  email     String   @unique
+  senhaHash String
+  criadoEm  DateTime @default(now())
+}
+
+model EventoAuditoria {
+  id           String      @id @default(cuid())
+  condominioId String?
+  condominio   Condominio? @relation(fields: [condominioId], references: [id], onDelete: Cascade)
+  autor        String // nome de quem fez (usuário, admin da plataforma ou "sistema")
+  acao         String
+  detalhes     Json?
+  criadoEm     DateTime    @default(now())
+
+  @@index([condominioId, criadoEm])
+}
+
+// Eventos do Asaas já processados (o Asaas pode reenviar)
+model AsaasEventoProcessado {
+  id         String   @id
+  recebidoEm DateTime @default(now())
+}
+
+// ------------------------------------------------------
 // PESSOAS E ESCALAS
 // ------------------------------------------------------
 
@@ -28,21 +165,23 @@ enum Turno {
 }
 
 model Usuario {
-  id         String   @id @default(cuid())
-  nome       String
-  login      String   @unique
-  senhaHash  String
-  papel      Papel
+  id           String     @id @default(cuid())
+  condominioId String
+  condominio   Condominio @relation(fields: [condominioId], references: [id], onDelete: Cascade)
+  nome         String
+  login        String     @unique
+  senhaHash    String
+  papel        Papel
   // Número de WhatsApp no formato internacional, só dígitos (ex.: 5511999998888)
-  telefone   String?  @unique
-  ativo      Boolean  @default(true)
-  equipeId   String?
-  equipe     Equipe?  @relation(fields: [equipeId], references: [id])
+  telefone     String?
+  ativo        Boolean    @default(true)
+  equipeId     String?
+  equipe       Equipe?    @relation(fields: [equipeId], references: [id])
   // Recepcionistas: horário de trabalho (HH:MM) e dia da folga (0 = domingo … 6 = sábado)
-  horaInicio String?
-  horaFim    String?
-  diaFolga   Int?
-  criadoEm   DateTime @default(now())
+  horaInicio   String?
+  horaFim      String?
+  diaFolga     Int?
+  criadoEm     DateTime   @default(now())
 
   rondas                Ronda[]
   ocorrencias           Ocorrencia[]                @relation("OcorrenciaRegistradaPor")
@@ -52,16 +191,23 @@ model Usuario {
   apoiosAtendidos       AtendimentoAcessibilidade[] @relation("ApoioAtendidoPor")
   passagens             PassagemTurno[]
   conversas             ConversaAgente[]
+
+  @@unique([condominioId, telefone])
+  @@index([condominioId])
 }
 
 // Equipes de portaria em escala 12x36: A/B no dia, C/D na noite.
 model Equipe {
-  id             String    @id @default(cuid())
-  nome           String    @unique
+  id             String     @id @default(cuid())
+  condominioId   String
+  condominio     Condominio @relation(fields: [condominioId], references: [id], onDelete: Cascade)
+  nome           String
   turno          Turno
   // Uma data (AAAA-MM-DD) em que a equipe trabalhou. Em 12x36 ela trabalha em dias alternados a partir daí.
-  dataReferencia DateTime  @db.Date
+  dataReferencia DateTime   @db.Date
   membros        Usuario[]
+
+  @@unique([condominioId, nome])
 }
 
 // ------------------------------------------------------
@@ -79,20 +225,24 @@ enum TipoLocal {
 }
 
 model Local {
-  id                String    @id @default(cuid())
-  nome              String    @unique
+  id                String     @id @default(cuid())
+  condominioId      String
+  condominio        Condominio @relation(fields: [condominioId], references: [id], onDelete: Cascade)
+  nome              String
   tipo              TipoLocal
-  ordem             Int       @default(0)
-  ativo             Boolean   @default(true)
+  ordem             Int        @default(0)
+  ativo             Boolean    @default(true)
   // Se o local entra no checklist de rondas e de quanto em quanto tempo (minutos). null = 1 vez por turno.
-  exigeRonda        Boolean   @default(true)
+  exigeRonda        Boolean    @default(true)
   intervaloRondaMin Int?
   // Ex.: praça de alimentação fecha aos domingos -> [0]
-  diasFechado       Int[]     @default([])
+  diasFechado       Int[]      @default([])
 
   rondas      Ronda[]
   ocorrencias Ocorrencia[]
   acessos     RegistroAcesso[]
+
+  @@unique([condominioId, nome])
 }
 
 // ------------------------------------------------------
@@ -107,6 +257,8 @@ enum Canal {
 
 model Ronda {
   id           String       @id @default(cuid())
+  condominioId String
+  condominio   Condominio   @relation(fields: [condominioId], references: [id], onDelete: Cascade)
   localId      String
   local        Local        @relation(fields: [localId], references: [id])
   porteiroId   String
@@ -117,7 +269,7 @@ model Ronda {
   canal        Canal        @default(WEB)
   ocorrencias  Ocorrencia[]
 
-  @@index([realizadaEm])
+  @@index([condominioId, realizadaEm])
 }
 
 enum CategoriaOcorrencia {
@@ -156,7 +308,10 @@ enum StatusOcorrencia {
 }
 
 model Ocorrencia {
-  id                Int                 @id @default(autoincrement())
+  id                String              @id @default(cuid())
+  condominioId      String
+  condominio        Condominio          @relation(fields: [condominioId], references: [id], onDelete: Cascade)
+  numero            Int // sequencial dentro do condomínio
   titulo            String
   descricao         String
   categoria         CategoriaOcorrencia
@@ -180,8 +335,9 @@ model Ocorrencia {
   resolucao         String?
   setorNotificadoEm DateTime?
 
-  @@index([status, setor])
-  @@index([criadaEm])
+  @@unique([condominioId, numero])
+  @@index([condominioId, status, setor])
+  @@index([condominioId, criadaEm])
 }
 
 enum TipoAcesso {
@@ -196,6 +352,8 @@ enum TipoAcesso {
 // aqui guardamos o espelho para consulta rápida, passagem de turno e livro do dia.
 model RegistroAcesso {
   id                String     @id @default(cuid())
+  condominioId      String
+  condominio        Condominio @relation(fields: [condominioId], references: [id], onDelete: Cascade)
   nome              String
   // Guardamos só os 4 últimos dígitos do documento (LGPD). O documento completo fica no Invenzi.
   documentoFinal    String?
@@ -213,8 +371,7 @@ model RegistroAcesso {
   registradoPor     Usuario    @relation(fields: [registradoPorId], references: [id])
   canal             Canal      @default(WEB)
 
-  @@index([entradaEm])
-  @@index([nome])
+  @@index([condominioId, entradaEm])
 }
 
 enum TipoNecessidade {
@@ -236,6 +393,8 @@ enum StatusApoio {
 
 model AtendimentoAcessibilidade {
   id              String          @id @default(cuid())
+  condominioId    String
+  condominio      Condominio      @relation(fields: [condominioId], references: [id], onDelete: Cascade)
   pessoa          String
   necessidade     TipoNecessidade
   destino         String?
@@ -249,30 +408,36 @@ model AtendimentoAcessibilidade {
   iniciadoEm      DateTime?
   concluidoEm     DateTime?
 
-  @@index([status])
+  @@index([condominioId, status])
 }
 
 model PassagemTurno {
-  id       String   @id @default(cuid())
+  id           String     @id @default(cuid())
+  condominioId String
+  condominio   Condominio @relation(fields: [condominioId], references: [id], onDelete: Cascade)
   // Data do plantão (o turno da noite pertence à data em que começou, às 19h)
-  data     DateTime @db.Date
-  turno    Turno
-  resumo   String
-  geradoEm DateTime @default(now())
-  autorId  String?
-  autor    Usuario? @relation(fields: [autorId], references: [id])
+  data         DateTime   @db.Date
+  turno        Turno
+  resumo       String
+  geradoEm     DateTime   @default(now())
+  autorId      String?
+  autor        Usuario?   @relation(fields: [autorId], references: [id])
 
-  @@index([data, turno])
+  @@index([condominioId, data, turno])
 }
 
 // Livro de ocorrências digital do dia (substitui o livro escrito pelo encarregado).
 model LivroDiario {
-  id           String    @id @default(cuid())
-  data         DateTime  @unique @db.Date
+  id           String     @id @default(cuid())
+  condominioId String
+  condominio   Condominio @relation(fields: [condominioId], references: [id], onDelete: Cascade)
+  data         DateTime   @db.Date
   conteudo     String
-  geradoEm     DateTime  @default(now())
+  geradoEm     DateTime   @default(now())
   conferidoPor String?
   conferidoEm  DateTime?
+
+  @@unique([condominioId, data])
 }
 
 // ------------------------------------------------------
