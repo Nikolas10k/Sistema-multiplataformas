@@ -1,12 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
-  experimental: {
-    serverActions: {
-      bodySizeLimit: '10mb',
-    },
-  },
+  output: "standalone",
+  poweredByHeader: false,
+  serverExternalPackages: ["@prisma/client"],
 };
 
 export default nextConfig;

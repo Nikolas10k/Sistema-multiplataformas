@@ -8,582 +8,309 @@ datasource db {
 }
 
 // ------------------------------------------------------
-// PLATFORM CORE & SAAS STRUCTURE
+// PESSOAS E ESCALAS
 // ------------------------------------------------------
 
-model Plan {
-  id            String   @id @default(cuid())
-  code          String   @unique // start, pro, max
-  name          String
-  priceMonthly  Float    @default(0)
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  tenants       Tenant[]
+enum Papel {
+  TI_ADMIN
+  SINDICA
+  ADMINISTRACAO
+  FINANCEIRO
+  SUPERVISOR
+  ENCARREGADO
+  PORTEIRO
+  RECEPCIONISTA
 }
 
-model NicheType {
-  id          String   @id @default(cuid())
-  code        String   @unique // RESTAURANT, PHYSIOTHERAPY, RETAIL
-  name        String
-  description String?
-  active      Boolean  @default(true)
-  
-  tenants     Tenant[]
+enum Turno {
+  DIA // 07h às 19h
+  NOITE // 19h às 07h
 }
 
-model Tenant {
-  id               String   @id @default(cuid())
-  name             String
-  slug             String   @unique
-  domain           String?  @unique
-  logoUrl          String?
-  document         String?
-  email            String?
-  phone            String?
-  address          String?
-  status           String   @default("ACTIVE") // ACTIVE, SUSPENDED, DELETED
-  
-  planId           String
-  plan             Plan     @relation(fields: [planId], references: [id])
-  
-  nicheId          String
-  niche            NicheType @relation(fields: [nicheId], references: [id])
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+model Usuario {
+  id         String   @id @default(cuid())
+  nome       String
+  login      String   @unique
+  senhaHash  String
+  papel      Papel
+  // Número de WhatsApp no formato internacional, só dígitos (ex.: 5511999998888)
+  telefone   String?  @unique
+  ativo      Boolean  @default(true)
+  equipeId   String?
+  equipe     Equipe?  @relation(fields: [equipeId], references: [id])
+  // Recepcionistas: horário de trabalho (HH:MM) e dia da folga (0 = domingo … 6 = sábado)
+  horaInicio String?
+  horaFim    String?
+  diaFolga   Int?
+  criadoEm   DateTime @default(now())
 
-  // Relationships
-  config           TenantConfig?
-  modules          TenantModule[]
-  users            UserTenantRole[]
-  featureFlags     FeatureFlag[]
-  dashboardConfig  TenantDashboardConfig?
-  auditLogs        AuditLog[]
-
-  // Business Entities (Generic/Scaffold)
-  categories       Category[]
-  products         Product[]
-  notifications    Notification[]
-  
-  // Niche Specific - Restaurant
-  restaurants      Restaurant[] 
-  monthlyTabs      MonthlyTab[]
-  
-  // Niche Specific - Physiotherapy
-  patients         Patient[]
-  services         Service[]
-  sales            Sale[]
-
-  // Niche Specific - Veterinary
-  tutors           Tutor[]
-  animals          Animal[]
+  rondas                Ronda[]
+  ocorrencias           Ocorrencia[]                @relation("OcorrenciaRegistradaPor")
+  ocorrenciasResolvidas Ocorrencia[]                @relation("OcorrenciaResolvidaPor")
+  acessos               RegistroAcesso[]
+  apoiosSolicitados     AtendimentoAcessibilidade[] @relation("ApoioSolicitadoPor")
+  apoiosAtendidos       AtendimentoAcessibilidade[] @relation("ApoioAtendidoPor")
+  passagens             PassagemTurno[]
+  conversas             ConversaAgente[]
 }
 
-model TenantConfig {
-  id             String  @id @default(cuid())
-  tenantId       String  @unique
-  tenant         Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  logoUrl        String?
-  companyName    String?
-  primaryColor   String? @default("#4f46e5")
-  secondaryColor String? @default("#1e293b")
-  
-  // Customizations
-  terms          String?   // Dictionary overrides: { "patient": "Cliente" }
-  menuOrder      String?   // ["dashboard", "patients", "finance"]
-  monthlyGoal    Float?    // Meta Mensal
-  
-  updatedAt      DateTime @updatedAt
-}
-
-model TenantModule {
-  id        String  @id @default(cuid())
-  tenantId  String
-  moduleKey String  // inventory, monthly_tabs, clinical_files
-  enabled   Boolean @default(true)
-  
-  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@unique([tenantId, moduleKey])
-}
-
-model FeatureFlag {
-  id        String  @id @default(cuid())
-  tenantId  String
-  flagKey   String  // beta_features, new_pdv
-  enabled   Boolean @default(false)
-  
-  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@unique([tenantId, flagKey])
+// Equipes de portaria em escala 12x36: A/B no dia, C/D na noite.
+model Equipe {
+  id             String    @id @default(cuid())
+  nome           String    @unique
+  turno          Turno
+  // Uma data (AAAA-MM-DD) em que a equipe trabalhou. Em 12x36 ela trabalha em dias alternados a partir daí.
+  dataReferencia DateTime  @db.Date
+  membros        Usuario[]
 }
 
 // ------------------------------------------------------
-// RBAC SYSTEM (Tenant Aware)
+// ESPAÇOS DO PRÉDIO
 // ------------------------------------------------------
 
-model User {
-  id           String   @id @default(cuid())
-  name         String
-  username     String   @unique
-  password     String
-  isPlatformAdmin Boolean @default(false)
-  status       String   @default("ACTIVE")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  tenants      UserTenantRole[]
-  auditLogs    AuditLog[]
+enum TipoLocal {
+  RECEPCAO
+  ANDAR
+  SUBSOLO
+  PRACA_ALIMENTACAO
+  LOJAS
+  AREA_EXTERNA
+  OUTRO
 }
 
-model Role {
-  id          String   @id @default(cuid())
-  name        String   @unique // ADMIN, MANAGER, WAITER, PHYSIOTHERAPIST, RECEPTIONIST
-  description String?
-  
-  permissions RolePermission[]
-  userTenants UserTenantRole[]
-}
+model Local {
+  id                String    @id @default(cuid())
+  nome              String    @unique
+  tipo              TipoLocal
+  ordem             Int       @default(0)
+  ativo             Boolean   @default(true)
+  // Se o local entra no checklist de rondas e de quanto em quanto tempo (minutos). null = 1 vez por turno.
+  exigeRonda        Boolean   @default(true)
+  intervaloRondaMin Int?
+  // Ex.: praça de alimentação fecha aos domingos -> [0]
+  diasFechado       Int[]     @default([])
 
-model Permission {
-  id          String   @id @default(cuid())
-  resource    String   // orders, products, patients, clinical_history
-  action      String   // create, read, update, delete, manage
-  
-  roles       RolePermission[]
-
-  @@unique([resource, action])
-}
-
-model RolePermission {
-  id           String     @id @default(cuid())
-  roleId       String
-  permissionId String
-  
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-
-  @@unique([roleId, permissionId])
-}
-
-model UserTenantRole {
-  id        String @id @default(cuid())
-  userId    String
-  tenantId  String
-  roleId    String
-  
-  customPermissions String? // JSON string array of allowed feature paths/keys
-  
-  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  role      Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, tenantId])
+  rondas      Ronda[]
+  ocorrencias Ocorrencia[]
+  acessos     RegistroAcesso[]
 }
 
 // ------------------------------------------------------
-// DASHBOARD DYNAMIC SYSTEM
+// OPERAÇÃO
 // ------------------------------------------------------
 
-model DashboardWidget {
-  id          String   @id @default(cuid())
-  code        String   @unique // sales_chart, recent_patients, low_stock
-  name        String
-  description String?
-  nicheCode   String?  // If null, it's global
-  component   String   // Component name to render
-  
-  tenantConfigs TenantDashboardConfigWidget[]
+enum Canal {
+  WEB
+  WHATSAPP
+  SISTEMA
 }
 
-model TenantDashboardConfig {
-  id        String   @id @default(cuid())
-  tenantId  String   @unique
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  widgets   TenantDashboardConfigWidget[]
+model Ronda {
+  id           String       @id @default(cuid())
+  localId      String
+  local        Local        @relation(fields: [localId], references: [id])
+  porteiroId   String
+  porteiro     Usuario      @relation(fields: [porteiroId], references: [id])
+  realizadaEm  DateTime     @default(now())
+  comAlteracao Boolean      @default(false)
+  observacao   String?
+  canal        Canal        @default(WEB)
+  ocorrencias  Ocorrencia[]
+
+  @@index([realizadaEm])
 }
 
-model TenantDashboardConfigWidget {
-  id               String          @id @default(cuid())
-  configId         String
-  widgetId         String
-  order            Int             @default(0)
-  size             String          @default("medium") // small, medium, large, full
-  
-  config           TenantDashboardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  widget           DashboardWidget       @relation(fields: [widgetId], references: [id], onDelete: Cascade)
-
-  @@unique([configId, widgetId])
+enum CategoriaOcorrencia {
+  SEGURANCA
+  MANUTENCAO
+  LIMPEZA
+  ACESSO
+  ACESSIBILIDADE
+  CONVIVENCIA
+  GARAGEM
+  EMERGENCIA
+  OUTRO
 }
 
-// ------------------------------------------------------
-// BUSINESS ENTITIES (Tenant Scoped)
-// ------------------------------------------------------
-
-model AuditLog {
-  id        String   @id @default(cuid())
-  tenantId  String
-  userId    String
-  action    String   // CREATE, UPDATE, DELETE, LOGIN
-  resource  String   // Order, Product, Patient
-  resourceId String?
-  details   String?
-  ipAddress String?
-  createdAt DateTime @default(now())
-
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+enum Prioridade {
+  BAIXA
+  MEDIA
+  ALTA
+  URGENTE
 }
 
-model Restaurant {
-  id          String   @id @default(cuid())
-  tenantId    String
-  name        String
-  location    String?
-  isOpen      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  orders      Order[]
+enum Setor {
+  ADMINISTRACAO
+  FINANCEIRO
+  SUPERVISOR
+  SINDICA
+  PORTARIA
+  RECEPCAO
+  TI
 }
 
-model Category {
-  id         String    @id @default(cuid())
-  tenantId   String
-  name       String
-  products   Product[]
-  
-  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+enum StatusOcorrencia {
+  ABERTA
+  EM_ANDAMENTO
+  RESOLVIDA
 }
 
-model Product {
-  id          String     @id @default(cuid())
-  tenantId    String
-  name        String
-  description String?
-  imageUrl    String?
-  price       Float
-  cost        Float?     // Custo unitário
-  stock       Int        @default(0) // Quantidade em estoque
-  active      Boolean    @default(true)
-  categoryId  String
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+model Ocorrencia {
+  id                Int                 @id @default(autoincrement())
+  titulo            String
+  descricao         String
+  categoria         CategoriaOcorrencia
+  prioridade        Prioridade          @default(MEDIA)
+  setor             Setor
+  status            StatusOcorrencia    @default(ABERTA)
+  localId           String?
+  local             Local?              @relation(fields: [localId], references: [id])
+  sala              String?
+  fotos             String[]            @default([])
+  rondaId           String?
+  ronda             Ronda?              @relation(fields: [rondaId], references: [id])
+  registradoPorId   String
+  registradoPor     Usuario             @relation("OcorrenciaRegistradaPor", fields: [registradoPorId], references: [id])
+  canal             Canal               @default(WEB)
+  criadaEm          DateTime            @default(now())
+  atualizadaEm      DateTime            @updatedAt
+  resolvidaEm       DateTime?
+  resolvidaPorId    String?
+  resolvidaPor      Usuario?            @relation("OcorrenciaResolvidaPor", fields: [resolvidaPorId], references: [id])
+  resolucao         String?
+  setorNotificadoEm DateTime?
 
-  category    Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  orderItems  OrderItem[]
+  @@index([status, setor])
+  @@index([criadaEm])
 }
 
-model Order {
-  id           String      @id @default(cuid())
-  tenantId     String      // Added explicit tenantId for faster scoping
-  restaurantId String
-  userId       String?
-  table        String?
-  customerName String?
-  status       String      @default("OPEN")
-  total        Float       @default(0)
-  paymentMethod String?
-  cpf          String?
-  notalegal    Boolean     @default(false)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-
-  monthlyTabId String?
-  monthlyTab   MonthlyTab? @relation(fields: [monthlyTabId], references: [id], onDelete: SetNull)
-
-  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  items        OrderItem[]
+enum TipoAcesso {
+  VISITANTE
+  PRESTADOR
+  ENTREGA
+  CANDIDATO
+  OUTRO
 }
 
-model OrderItem {
-  id        String  @id @default(cuid())
-  orderId   String
-  productId String
-  quantity  Int     @default(1)
-  price     Float
-  notes     String?
+// Registro operacional de quem entrou. O cadastro oficial da credencial continua no Invenzi;
+// aqui guardamos o espelho para consulta rápida, passagem de turno e livro do dia.
+model RegistroAcesso {
+  id                String     @id @default(cuid())
+  nome              String
+  // Guardamos só os 4 últimos dígitos do documento (LGPD). O documento completo fica no Invenzi.
+  documentoFinal    String?
+  tipo              TipoAcesso @default(VISITANTE)
+  sala              String?
+  empresa           String?
+  localId           String?
+  local             Local?     @relation(fields: [localId], references: [id])
+  cadastradoInvenzi Boolean    @default(false)
+  invenziId         String?
+  entradaEm         DateTime   @default(now())
+  saidaEm           DateTime?
+  observacao        String?
+  registradoPorId   String
+  registradoPor     Usuario    @relation(fields: [registradoPorId], references: [id])
+  canal             Canal      @default(WEB)
 
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  @@index([entradaEm])
+  @@index([nome])
 }
 
-model Notification {
-  id        String   @id @default(cuid())
-  tenantId  String
-  message   String
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+enum TipoNecessidade {
+  CADEIRANTE
+  MOBILIDADE_REDUZIDA
+  IDOSO
+  DEFICIENCIA_VISUAL
+  DEFICIENCIA_AUDITIVA
+  GESTANTE
+  OUTRO
 }
 
-model MonthlyTab {
-  id           String   @id @default(cuid())
-  tenantId     String
-  customerName String
-  phoneNumber  String?
-  status       String   @default("OPEN") // OPEN, CLOSED
-  balance      Float    @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  orders       Order[]
+enum StatusApoio {
+  SOLICITADO
+  EM_ATENDIMENTO
+  CONCLUIDO
+  CANCELADO
 }
 
-// ------------------------------------------------------
-// PHYSIOTHERAPY SPECIFIC MODELS
-// ------------------------------------------------------
+model AtendimentoAcessibilidade {
+  id              String          @id @default(cuid())
+  pessoa          String
+  necessidade     TipoNecessidade
+  destino         String?
+  observacao      String?
+  status          StatusApoio     @default(SOLICITADO)
+  solicitadoPorId String
+  solicitadoPor   Usuario         @relation("ApoioSolicitadoPor", fields: [solicitadoPorId], references: [id])
+  atendidoPorId   String?
+  atendidoPor     Usuario?        @relation("ApoioAtendidoPor", fields: [atendidoPorId], references: [id])
+  criadoEm        DateTime        @default(now())
+  iniciadoEm      DateTime?
+  concluidoEm     DateTime?
 
-model Patient {
-  id               String   @id @default(cuid())
-  tenantId         String
-  name             String
-  email            String?
-  phone            String?
-  birthDate        DateTime?
-  document         String?
-  address          String?
-  gender           String?
-  status           String   @default("ACTIVE") // ACTIVE, DISCHARGED, INACTIVE
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  clinicalFiles    ClinicalFile[]
-  evolutions       ClinicalEvolution[]
-  sales            Sale[]
+  @@index([status])
 }
 
-model ClinicalFile {
-  id               String   @id @default(cuid())
-  patientId        String
-  tenantId         String
-  
-  complaint        String?  // Queixa principal
-  history          String?  // Histórico patológico pregressa
-  anamnesis        String?    // Structured data
-  diagnosis        String?  
-  treatmentPlan    String?  
-  
-  active           Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+model PassagemTurno {
+  id       String   @id @default(cuid())
+  // Data do plantão (o turno da noite pertence à data em que começou, às 19h)
+  data     DateTime @db.Date
+  turno    Turno
+  resumo   String
+  geradoEm DateTime @default(now())
+  autorId  String?
+  autor    Usuario? @relation(fields: [autorId], references: [id])
 
-  patient          Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  @@index([data, turno])
 }
 
-model ClinicalEvolution {
-  id               String   @id @default(cuid())
-  patientId        String
-  tenantId         String
-  professionalId   String?  // User ID
-  
-  notes            String   
-  evolutionDate    DateTime @default(now())
-  status           String?  // IMPROVED, STABLE, REGRESSED
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  patient          Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+// Livro de ocorrências digital do dia (substitui o livro escrito pelo encarregado).
+model LivroDiario {
+  id           String    @id @default(cuid())
+  data         DateTime  @unique @db.Date
+  conteudo     String
+  geradoEm     DateTime  @default(now())
+  conferidoPor String?
+  conferidoEm  DateTime?
 }
 
 // ------------------------------------------------------
-// SALES & BILLING MODULE (PHYSIOTHERAPY)
+// AGENTE
 // ------------------------------------------------------
 
-model Service {
-  id           String     @id @default(cuid())
-  tenantId     String
-  name         String
-  description  String?
-  category     String     @default("Geral")
-  type         String     @default("AVULSO") // AVULSO | PACOTE
-  price        Float
-  sessions     Int        @default(1)
-  validityDays Int?       // Validade do pacote em dias
-  active       Boolean    @default(true)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+model ConversaAgente {
+  id           String           @id @default(cuid())
+  usuarioId    String
+  usuario      Usuario          @relation(fields: [usuarioId], references: [id])
+  canal        Canal
+  // Uma conversa por pessoa, canal e plantão: o histórico recomeça a cada turno.
+  chavePlantao String
+  criadaEm     DateTime         @default(now())
+  mensagens    MensagemAgente[]
 
-  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  saleItems    SaleItem[]
+  @@unique([usuarioId, canal, chavePlantao])
 }
 
-model Sale {
-  id             String     @id @default(cuid())
-  saleNumber     Int
-  tenantId       String
-  patientId      String
-  subtotal       Float
-  discountValue  Float      @default(0)
-  total          Float
-  amountPaid     Float      @default(0)
-  status         String     @default("PENDING") // PENDING | PARTIAL | PAID | CANCELLED
-  paymentMethod  String?    // PIX | CREDITO | DEBITO | DINHEIRO | CONVENIO
-  attendanceType String     @default("PARTICULAR") // PARTICULAR | CONVENIO
-  notes          String?
-  saleDate       DateTime   @default(now())
-  dueDate        DateTime?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+model MensagemAgente {
+  id         String         @id @default(cuid())
+  conversaId String
+  conversa   ConversaAgente @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  role       String // "user" | "assistant"
+  // Conteúdo exatamente como enviado/recebido da API (blocos), para reenviar sem alterações.
+  conteudo   Json
+  criadaEm   DateTime       @default(now())
 
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  items     SaleItem[]
-
-  @@unique([tenantId, saleNumber])
+  @@index([conversaId, criadaEm])
 }
 
-model SaleItem {
-  id            String   @id @default(cuid())
-  saleId        String
-  serviceId     String
-  quantity      Int      @default(1)
-  unitPrice     Float
-  discountItem  Float    @default(0)
-  totalItem     Float
-  sessionsTotal Int      @default(1)
-  sessionsUsed  Int      @default(0)
-  expiresAt     DateTime?
-  createdAt     DateTime @default(now())
-
-  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+// Mensagens do WhatsApp já processadas (a Meta pode reenviar o mesmo webhook).
+model WhatsappMensagemProcessada {
+  id         String   @id // wamid
+  recebidaEm DateTime @default(now())
 }
 
-// ------------------------------------------------------
-// VETERINARY SPECIFIC MODELS
-// ------------------------------------------------------
-
-model Tutor {
-  id               String   @id @default(cuid())
-  tenantId         String
-  name             String
-  email            String?
-  phone            String?
-  whatsapp         String?
-  document         String?
-  address          String?
-  observations     String?
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  animals          Animal[]
-}
-
-model Animal {
-  id               String   @id @default(cuid())
-  tenantId         String
-  tutorId          String
-  name             String
-  species          String?  // Cão, Gato, Ave, etc.
-  breed            String?  // Raça
-  sex              String?  // Macho, Fêmea
-  birthDate        DateTime?
-  weight           Float?
-  color            String?
-  microchip        String?
-  reproductiveStatus String? // Castrado, Inteiro
-  allergies        String?
-  conditions       String?  // Condições pré-existentes
-  imageUrl         String?
-  observations     String?
-  status           String   @default("ACTIVE")
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  tutor            Tutor    @relation(fields: [tutorId], references: [id], onDelete: Cascade)
-  consultations    VetConsultation[]
-  vaccines         VetVaccine[]
-  exams            VetExam[]
-  internments      VetInternment[]
-}
-
-model VetConsultation {
-  id               String   @id @default(cuid())
-  animalId         String
-  tenantId         String
-  professionalId   String?
-  
-  complaint        String?  // Queixa principal
-  history          String?  // Anamnese / Histórico
-  clinicalSigns    String?  // Sinais clínicos
-  physicalExam     String?  // Exame físico
-  hypotheses       String?  // Hipóteses diagnósticas
-  diagnosis        String?  // Diagnóstico
-  treatmentPlan    String?  // Plano terapêutico
-  prescription     String?  // Prescrições
-  returnDate       DateTime?
-  
-  date             DateTime @default(now())
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  animal           Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
-}
-
-model VetVaccine {
-  id               String   @id @default(cuid())
-  animalId         String
-  tenantId         String
-  
-  name             String
-  batch            String?
-  applicationDate  DateTime @default(now())
-  nextDoseDate     DateTime?
-  professional     String?
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  animal           Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
-}
-
-model VetExam {
-  id               String   @id @default(cuid())
-  animalId         String
-  tenantId         String
-  
-  name             String
-  requestDate      DateTime @default(now())
-  resultDate       DateTime?
-  results          String?
-  attachments      String?  // URLs
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  animal           Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
-}
-
-model VetInternment {
-  id               String   @id @default(cuid())
-  animalId         String
-  tenantId         String
-  
-  entryDate        DateTime @default(now())
-  exitDate         DateTime?
-  reason           String?
-  bed              String?  // Leito/Baia
-  observations     String?
-  status           String   @default("ACTIVE") // ACTIVE, DISCHARGED
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  animal           Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+model TarefaAgendadaExecucao {
+  chave       String   @id // ex.: "passagem:2026-10-12:DIA"
+  executadaEm DateTime @default(now())
 }

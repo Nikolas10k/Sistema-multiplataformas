@@ -1,85 +1,66 @@
-import { prisma } from "./prisma";
+import "server-only";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { SignJWT, jwtVerify } from "jose";
+import bcrypt from "bcryptjs";
+import type { Papel } from "@prisma/client";
+import { db } from "./db";
 
-// Cache em memória simples para as features do tenant (em prod, usar Redis)
-const tenantFeaturesCache = new Map<string, { features: Set<string>, timestamp: number }>();
-const CACHE_TTL = 60 * 1000; // 1 minuto
+export const COOKIE_SESSAO = "sessao";
+const DURACAO_SEGUNDOS = 60 * 60 * 14; // cobre um plantão de 12h com folga
 
-/**
- * Busca todas as features habilitadas para um Tenant
- */
-export async function getTenantFeatures(tenantId: string): Promise<Set<string>> {
-  const now = Date.now();
-  const cached = tenantFeaturesCache.get(tenantId);
-  
-  if (cached && (now - cached.timestamp < CACHE_TTL)) {
-    return cached.features;
-  }
+function chave() {
+  const segredo = process.env.SESSION_SECRET;
+  if (!segredo || segredo.length < 32) throw new Error("SESSION_SECRET ausente ou curto (mínimo 32 caracteres).");
+  return new TextEncoder().encode(segredo);
+}
 
-  if (!tenantId || tenantId === 'undefined' || tenantId === 'null' || tenantId.length < 5) {
-    return new Set();
-  }
-
-  // Busca plano e módulos do banco
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    include: {
-      plan: true,
-      modules: { where: { enabled: true } }
-    }
+export async function criarSessao(usuarioId: string) {
+  const token = await new SignJWT({ sub: usuarioId })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(`${DURACAO_SEGUNDOS}s`)
+    .sign(chave());
+  (await cookies()).set(COOKIE_SESSAO, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: DURACAO_SEGUNDOS,
   });
-
-  if (!tenant) return new Set();
-
-  const enabledFeatures = new Set<string>();
-
-  // Adiciona módulos ativos como features
-  tenant.modules.forEach(m => enabledFeatures.add(m.moduleKey));
-
-  // Features implícitas pelo plano
-  if (tenant.plan.code === 'pro') {
-    enabledFeatures.add('reports.advanced');
-  }
-  if (tenant.plan.code === 'max') {
-    enabledFeatures.add('reports.advanced');
-    enabledFeatures.add('multiunit.enabled');
-  }
-
-  // Se for varejo ou fisioterapia, libera as features base se não estiverem nos módulos
-  // (Isso é um fallback de segurança)
-  const niche = await prisma.nicheType.findUnique({ where: { id: tenant.nicheId } });
-  if (niche?.code === 'RETAIL') enabledFeatures.add('sales.basic');
-  if (niche?.code === 'PHYSIOTHERAPY') enabledFeatures.add('patients.manage');
-
-  // Atualiza cache
-  tenantFeaturesCache.set(tenantId, { features: enabledFeatures, timestamp: now });
-
-  return enabledFeatures;
 }
 
-/**
- * Verifica se um Tenant tem uma feature específica liberada
- */
-export async function hasFeature(tenantId: string | null | undefined, featureCode: string): Promise<boolean> {
-  if (!tenantId) return false;
-  const features = await getTenantFeatures(tenantId);
-  return features.has(featureCode);
+export async function encerrarSessao() {
+  (await cookies()).delete(COOKIE_SESSAO);
 }
 
-/**
- * Verifica permissões granulares por role (RBAC básico)
- */
-export function can(role: string, resource: string, action: string = 'manage'): boolean {
-  if (role === 'PLATFORM_ADMIN') return true;
-  if (role === 'ADMIN') return true;
-  
-  if (role === 'CASHIER') {
-    if (resource === 'pdv') return true;
-    if (resource === 'orders' && action === 'view') return true;
+export async function usuarioAtual() {
+  const token = (await cookies()).get(COOKIE_SESSAO)?.value;
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, chave());
+    if (!payload.sub) return null;
+    const usuario = await db.usuario.findUnique({ where: { id: payload.sub } });
+    return usuario?.ativo ? usuario : null;
+  } catch {
+    return null;
   }
-  
-  if (role === 'WAITER') {
-    if (resource === 'comanda') return true;
-  }
-  
-  return false;
+}
+
+/** Garante usuário logado (e, opcionalmente, com um dos papéis). Redireciona caso contrário. */
+export async function exigirUsuario(papeis?: Papel[]) {
+  const usuario = await usuarioAtual();
+  if (!usuario) redirect("/login");
+  if (papeis && !papeis.includes(usuario.papel)) redirect("/");
+  return usuario;
+}
+
+export async function verificarCredenciais(login: string, senha: string) {
+  const usuario = await db.usuario.findUnique({ where: { login: login.trim().toLowerCase() } });
+  if (!usuario || !usuario.ativo) return null;
+  return (await bcrypt.compare(senha, usuario.senhaHash)) ? usuario : null;
+}
+
+export function gerarHashSenha(senha: string) {
+  return bcrypt.hash(senha, 10);
 }
